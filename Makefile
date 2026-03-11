@@ -1,4 +1,4 @@
-.PHONY: all build test lint fmt vet tidy clean docker-build docker-run coverage
+.PHONY: all build test lint fmt vet tidy clean docker-build docker-run coverage smoke
 
 BINARY      := ironclaw-mcp
 CMD_PATH    := ./cmd/ironclaw-mcp
@@ -58,6 +58,10 @@ docker-run:
 	  -e IRONCLAW_BASE_URL=$${IRONCLAW_BASE_URL:-http://host.docker.internal:3000} \
 	  -e IRONCLAW_API_KEY=$${IRONCLAW_API_KEY:-} \
 	  $(DOCKER_IMG):$(DOCKER_TAG)
+
+# Deterministic local smoke test
+smoke:
+	./scripts/smoke-test.sh
 
 # Alias
 all: check build

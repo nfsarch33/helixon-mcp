@@ -9,16 +9,15 @@ A production-ready **MCP (Model Context Protocol) server** written in Go that br
 
 | Tool | Description |
 |---|---|
-| `ironclaw_health` | Check IronClaw availability and version |
-| `ironclaw_chat` | Send a message and get a response (with optional session context) |
+| `ironclaw_health` | Check IronClaw gateway availability and channel |
+| `ironclaw_chat` | Send a message and wait for the async IronClaw gateway response (optional `session_id` maps to gateway `thread_id`) |
 | `ironclaw_list_jobs` | List all background jobs |
 | `ironclaw_get_job` | Get details of a specific job |
 | `ironclaw_cancel_job` | Cancel a running job |
 | `ironclaw_search_memory` | Semantic search over IronClaw workspace memory |
 | `ironclaw_list_routines` | List all scheduled routines |
-| `ironclaw_create_routine` | Create a new scheduled routine |
 | `ironclaw_delete_routine` | Delete a routine |
-| `ironclaw_list_tools` | List all tools registered in IronClaw |
+| `ironclaw_list_tools` | List all tools registered in IronClaw extensions |
 
 ## Quick Start
 
@@ -30,7 +29,7 @@ A production-ready **MCP (Model Context Protocol) server** written in Go that br
 
 ```bash
 export IRONCLAW_BASE_URL=http://localhost:3000
-export IRONCLAW_API_KEY=your-api-key   # optional
+export IRONCLAW_API_KEY=your-api-key   # required when IronClaw gateway auth is enabled
 go run ./cmd/ironclaw-mcp
 ```
 
@@ -54,12 +53,15 @@ All configuration is via environment variables:
 
 | Variable | Default | Description |
 |---|---|---|
-| `IRONCLAW_BASE_URL` | `http://localhost:3000` | IronClaw instance URL |
-| `IRONCLAW_API_KEY` | _(empty)_ | Optional bearer token |
-| `IRONCLAW_TIMEOUT_SECONDS` | `30` | HTTP timeout in seconds |
+| `IRONCLAW_BASE_URL` | `http://localhost:3000` | IronClaw instance URL (must be http(s); loopback-only by default) |
+| `IRONCLAW_API_KEY` | _(empty)_ | Bearer token for the IronClaw gateway (`GATEWAY_AUTH_TOKEN`) when auth is enabled |
+| `IRONCLAW_ALLOW_NON_LOCALHOST` | `false` | Set to `true` to allow non-loopback hosts (e.g. remote IronClaw) |
+| `IRONCLAW_TIMEOUT_SECONDS` | `30` | HTTP timeout in seconds (1–120) |
 | `MCP_TRANSPORT` | `stdio` | `stdio` or `sse` |
 | `MCP_SSE_ADDR` | `:8080` | Bind address when using SSE |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+
+**Secure local defaults:** By default, `IRONCLAW_BASE_URL` is restricted to loopback addresses (`localhost`, `127.0.0.1`, `[::1]`). Set `IRONCLAW_ALLOW_NON_LOCALHOST=true` only when you explicitly need to connect to a remote IronClaw instance.
 
 ## Cursor / Claude Code Integration
 
@@ -123,6 +125,38 @@ ironclaw-mcp/
 ├── Dockerfile            # Multi-stage scratch image
 └── Makefile              # Developer task runner
 ```
+
+## Local Integration Path (Cursor + IronClaw)
+
+The supported local setup for Cursor integration:
+
+1. **IronClaw runtime** — bound to loopback (`GATEWAY_HOST=127.0.0.1`, default)
+2. **ironclaw-mcp bridge** — stdio transport in Cursor, `IRONCLAW_BASE_URL=http://localhost:3000`
+3. **Minimal config** — `~/.cursor/mcp.json` with `command` and `IRONCLAW_API_KEY` whenever the gateway is protected by `GATEWAY_AUTH_TOKEN`
+
+### Smoke Test Workflow
+
+1. Start IronClaw with loopback-first settings (gateway on `http://localhost:3000`)
+2. Export `IRONCLAW_API_KEY` if the gateway is protected by `GATEWAY_AUTH_TOKEN`
+3. Run `make smoke` for the gateway-only proof, or `SMOKE_STATEFUL_TOOL=ironclaw_chat make smoke` for the full local chat-path proof
+4. The harness verifies:
+   - IronClaw gateway `/api/health`
+   - Router `/healthz` and `/v1/models` when the chat-path proof is requested
+   - MCP `initialize`
+   - MCP `tools/list`
+   - `ironclaw_health`
+   - One configurable stateful tool (`ironclaw_list_jobs` by default, or `SMOKE_STATEFUL_TOOL=ironclaw_chat`)
+5. Add `ironclaw-mcp` to `~/.cursor/mcp.json` and reload MCP servers
+
+### Troubleshooting
+
+- **Connection refused**: Ensure IronClaw is running and bound to localhost:3000
+- **Router health check fails**: Ensure `llm-cluster-router` is listening on `SMOKE_ROUTER_URL` and the local upstreams have finished model load
+- **Expected model missing from `/v1/models`**: Check the router config and make sure the primary `qwen3.5-27b` upstream is healthy before re-running chat smoke
+- **401 Unauthorized**: Set `IRONCLAW_API_KEY` to the token printed by IronClaw at startup (or `GATEWAY_AUTH_TOKEN` if you set it)
+- **Non-loopback URL rejected**: Use `IRONCLAW_ALLOW_NON_LOCALHOST=true` only when connecting to a remote IronClaw instance
+- **Chat appears asynchronous**: `ironclaw-mcp` now polls IronClaw thread history after `/api/chat/send`; if the local model is overloaded or unavailable, the tool call can time out instead of returning a partial response
+- **Need a full chat-path proof**: Run `SMOKE_STATEFUL_TOOL=ironclaw_chat make smoke` once the local router exposes `qwen3.5-27b`, or set `SMOKE_REQUIRE_ROUTER=true` to force the same router checks for a non-chat probe
 
 ## Architecture
 

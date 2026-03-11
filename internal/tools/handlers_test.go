@@ -13,18 +13,16 @@ import (
 )
 
 func makeReq(args map[string]any) mcp.CallToolRequest {
-	return mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Arguments: args,
-		},
-	}
+	var req mcp.CallToolRequest
+	req.Params.Arguments = args
+	return req
 }
 
 // --- Health ---
 
 func TestHealthHandler_OK(t *testing.T) {
 	m := new(MockIronclawClient)
-	m.On("Health", context.Background()).Return(&ironclaw.HealthResponse{Status: "ok", Version: "1.0"}, nil)
+	m.On("Health", context.Background()).Return(&ironclaw.HealthResponse{Status: "ok", Channel: "gateway"}, nil)
 	h := NewHealthHandler(m)
 	res, err := h.Handle(context.Background(), makeReq(nil))
 	require.NoError(t, err)
@@ -48,7 +46,7 @@ func TestHealthHandler_Error(t *testing.T) {
 func TestChatHandler_OK(t *testing.T) {
 	m := new(MockIronclawClient)
 	m.On("Chat", context.Background(), ironclaw.ChatRequest{Message: "hello", SessionID: ""}).
-		Return(&ironclaw.ChatResponse{Response: "hi", JobID: "j1"}, nil)
+		Return(&ironclaw.ChatResponse{Response: "hi", MessageID: "m1", Status: "completed"}, nil)
 	h := NewChatHandler(m)
 	res, err := h.Handle(context.Background(), makeReq(map[string]any{"message": "hello"}))
 	require.NoError(t, err)
@@ -56,7 +54,8 @@ func TestChatHandler_OK(t *testing.T) {
 	var out map[string]any
 	require.NoError(t, json.Unmarshal([]byte(res.Content[0].(mcp.TextContent).Text), &out))
 	assert.Equal(t, "hi", out["response"])
-	assert.Equal(t, "j1", out["job_id"])
+	assert.Equal(t, "m1", out["message_id"])
+	assert.Equal(t, "completed", out["status"])
 }
 
 func TestChatHandler_MissingMessage(t *testing.T) {
@@ -76,7 +75,7 @@ func TestChatHandler_EmptyMessage(t *testing.T) {
 func TestChatHandler_WithSession(t *testing.T) {
 	m := new(MockIronclawClient)
 	m.On("Chat", context.Background(), ironclaw.ChatRequest{Message: "hi", SessionID: "sess-1"}).
-		Return(&ironclaw.ChatResponse{Response: "hello", SessionID: "sess-1"}, nil)
+		Return(&ironclaw.ChatResponse{Response: "hello", SessionID: "sess-1", Status: "completed"}, nil)
 	h := NewChatHandler(m)
 	res, err := h.Handle(context.Background(), makeReq(map[string]any{"message": "hi", "session_id": "sess-1"}))
 	require.NoError(t, err)
@@ -93,12 +92,23 @@ func TestChatHandler_ClientError(t *testing.T) {
 	assert.True(t, res.IsError)
 }
 
+func TestChatHandler_BackendFailureDetail(t *testing.T) {
+	m := new(MockIronclawClient)
+	m.On("Chat", context.Background(), ironclaw.ChatRequest{Message: "hello", SessionID: ""}).
+		Return(&ironclaw.ChatResponse{}, errors.New("backend turn failed: OpenAIToolParser requires token IDs"))
+	h := NewChatHandler(m)
+	res, err := h.Handle(context.Background(), makeReq(map[string]any{"message": "hello"}))
+	require.NoError(t, err)
+	assert.True(t, res.IsError)
+	assert.Contains(t, res.Content[0].(mcp.TextContent).Text, "OpenAIToolParser requires token IDs")
+}
+
 // --- Jobs ---
 
 func TestJobsHandler_ListJobs_OK(t *testing.T) {
 	m := new(MockIronclawClient)
 	m.On("ListJobs", context.Background()).
-		Return(&ironclaw.JobsResponse{Jobs: []ironclaw.Job{{ID: "j1", Status: "running"}}}, nil)
+		Return(&ironclaw.JobsResponse{Jobs: []ironclaw.Job{{ID: "j1", State: "in_progress"}}}, nil)
 	h := NewJobsHandler(m)
 	res, err := h.HandleListJobs(context.Background(), makeReq(nil))
 	require.NoError(t, err)
@@ -116,7 +126,7 @@ func TestJobsHandler_ListJobs_Error(t *testing.T) {
 
 func TestJobsHandler_GetJob_OK(t *testing.T) {
 	m := new(MockIronclawClient)
-	m.On("GetJob", context.Background(), "j42").Return(&ironclaw.Job{ID: "j42", Status: "done"}, nil)
+	m.On("GetJob", context.Background(), "j42").Return(&ironclaw.Job{ID: "j42", State: "completed"}, nil)
 	h := NewJobsHandler(m)
 	res, err := h.HandleGetJob(context.Background(), makeReq(map[string]any{"job_id": "j42"}))
 	require.NoError(t, err)
@@ -153,7 +163,7 @@ func TestJobsHandler_CancelJob_Error(t *testing.T) {
 func TestMemoryHandler_OK(t *testing.T) {
 	m := new(MockIronclawClient)
 	m.On("SearchMemory", context.Background(), ironclaw.MemorySearchRequest{Query: "golang", Limit: 10}).
-		Return(&ironclaw.MemorySearchResponse{Entries: []ironclaw.MemoryEntry{{Path: "go.md", Content: "tips"}}}, nil)
+		Return(&ironclaw.MemorySearchResponse{Results: []ironclaw.MemoryEntry{{Path: "go.md", Content: "tips"}}}, nil)
 	h := NewMemoryHandler(m)
 	res, err := h.Handle(context.Background(), makeReq(map[string]any{"query": "golang"}))
 	require.NoError(t, err)
@@ -187,26 +197,6 @@ func TestRoutinesHandler_ListRoutines_OK(t *testing.T) {
 	res, err := h.HandleListRoutines(context.Background(), makeReq(nil))
 	require.NoError(t, err)
 	assert.False(t, res.IsError)
-}
-
-func TestRoutinesHandler_CreateRoutine_OK(t *testing.T) {
-	m := new(MockIronclawClient)
-	m.On("CreateRoutine", context.Background(), ironclaw.CreateRoutineRequest{
-		Name: "morning", Schedule: "0 9 * * *", Prompt: "news",
-	}).Return(&ironclaw.Routine{ID: "r2", Name: "morning"}, nil)
-	h := NewRoutinesHandler(m)
-	res, err := h.HandleCreateRoutine(context.Background(), makeReq(map[string]any{
-		"name": "morning", "schedule": "0 9 * * *", "prompt": "news",
-	}))
-	require.NoError(t, err)
-	assert.False(t, res.IsError)
-}
-
-func TestRoutinesHandler_CreateRoutine_MissingField(t *testing.T) {
-	h := NewRoutinesHandler(new(MockIronclawClient))
-	res, err := h.HandleCreateRoutine(context.Background(), makeReq(map[string]any{"name": "morning"}))
-	require.NoError(t, err)
-	assert.True(t, res.IsError)
 }
 
 func TestRoutinesHandler_DeleteRoutine_OK(t *testing.T) {

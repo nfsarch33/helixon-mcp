@@ -39,6 +39,7 @@ func run() error {
 		zap.String("version", version),
 		zap.String("ironclaw_url", cfg.IronclawBaseURL),
 		zap.String("transport", cfg.Transport),
+		zap.Bool("auth_configured", cfg.APIKey != ""),
 	)
 
 	client := ironclaw.NewClient(cfg.IronclawBaseURL, cfg.APIKey, cfg.Timeout)

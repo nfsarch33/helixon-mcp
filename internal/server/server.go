@@ -4,8 +4,8 @@ package server
 import (
 	"context"
 	"fmt"
+	"os"
 
-	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/nfsarch33/ironclaw-mcp/internal/tools"
 	"go.uber.org/zap"
@@ -13,10 +13,11 @@ import (
 
 // Server wraps the MCP server and its dependencies.
 type Server struct {
-	client  tools.IronclawClient
-	logger  *zap.Logger
-	version string
-	mcp     *server.MCPServer
+	client    tools.IronclawClient
+	logger    *zap.Logger
+	version   string
+	mcp       *server.MCPServer
+	toolCount int
 }
 
 // New creates and configures a new MCP Server with all IronClaw tools registered.
@@ -39,25 +40,30 @@ func (s *Server) buildMCPServer() *server.MCPServer {
 
 	health := tools.NewHealthHandler(s.client)
 	srv.AddTool(health.Tool(), health.Handle)
+	s.toolCount++
 
 	chat := tools.NewChatHandler(s.client)
 	srv.AddTool(chat.Tool(), chat.Handle)
+	s.toolCount++
 
 	jobs := tools.NewJobsHandler(s.client)
 	srv.AddTool(jobs.ListJobsTool(), jobs.HandleListJobs)
 	srv.AddTool(jobs.GetJobTool(), jobs.HandleGetJob)
 	srv.AddTool(jobs.CancelJobTool(), jobs.HandleCancelJob)
+	s.toolCount += 3
 
 	mem := tools.NewMemoryHandler(s.client)
 	srv.AddTool(mem.Tool(), mem.Handle)
+	s.toolCount++
 
 	routines := tools.NewRoutinesHandler(s.client)
 	srv.AddTool(routines.ListRoutinesTool(), routines.HandleListRoutines)
-	srv.AddTool(routines.CreateRoutineTool(), routines.HandleCreateRoutine)
 	srv.AddTool(routines.DeleteRoutineTool(), routines.HandleDeleteRoutine)
+	s.toolCount += 2
 
 	toolsList := tools.NewToolsListHandler(s.client)
 	srv.AddTool(toolsList.Tool(), toolsList.Handle)
+	s.toolCount++
 
 	return srv
 }
@@ -68,7 +74,7 @@ func (s *Server) Run(ctx context.Context, transport string) error {
 	switch transport {
 	case "stdio":
 		stdioSrv := server.NewStdioServer(s.mcp)
-		return stdioSrv.Listen(ctx, nil, nil)
+		return stdioSrv.Listen(ctx, os.Stdin, os.Stdout)
 	case "sse":
 		return fmt.Errorf("SSE transport not yet implemented; use stdio")
 	default:
@@ -83,6 +89,5 @@ func (s *Server) MCPServer() *server.MCPServer {
 
 // RegisteredToolCount returns how many tools are registered (for testing).
 func (s *Server) RegisteredToolCount() int {
-	tools, _ := s.mcp.ListTools(context.Background(), mcp.ListToolsRequest{})
-	return len(tools.Tools)
+	return s.toolCount
 }
