@@ -212,6 +212,115 @@ func TestChat_FailedTurnReturnsBackendError(t *testing.T) {
 	assert.Contains(t, err.Error(), "OpenAIToolParser requires token IDs")
 }
 
+func TestChat_UsesProvidedSessionID(t *testing.T) {
+	const threadID = "00000000-0000-0000-0000-000000000099"
+
+	historyCalls := 0
+	client, _ := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/chat/threads":
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/chat/history":
+			assert.Equal(t, threadID, r.URL.Query().Get("thread_id"))
+			historyCalls++
+			if historyCalls == 1 {
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+					"thread_id": threadID,
+					"turns":     []any{},
+					"has_more":  false,
+				}))
+				return
+			}
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"thread_id": threadID,
+				"turns": []any{
+					map[string]any{
+						"turn_number": 1,
+						"user_input":  "resume this thread",
+						"response":    "thread reused",
+						"state":       "Completed",
+						"started_at":  time.Now().UTC().Format(time.RFC3339),
+						"tool_calls":  []any{},
+					},
+				},
+				"has_more": false,
+			}))
+		case r.Method == http.MethodPost && r.URL.Path == "/api/chat/send":
+			var req map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+			assert.Equal(t, "resume this thread", req["content"])
+			assert.Equal(t, threadID, req["thread_id"])
+			w.WriteHeader(http.StatusAccepted)
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"message_id": "00000000-0000-0000-0000-000000000010",
+				"status":     "accepted",
+			}))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+
+	resp, err := client.Chat(context.Background(), ChatRequest{
+		Message:   "resume this thread",
+		SessionID: threadID,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "thread reused", resp.Response)
+	assert.Equal(t, threadID, resp.SessionID)
+}
+
+func TestChat_CancelledTurnReturnsTerminalError(t *testing.T) {
+	const threadID = "00000000-0000-0000-0000-000000000001"
+
+	historyCalls := 0
+	client, _ := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/chat/threads":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"assistant_thread": map[string]any{"id": threadID},
+				"threads":          []any{},
+				"active_thread":    threadID,
+			}))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/chat/history":
+			historyCalls++
+			if historyCalls == 1 {
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+					"thread_id": threadID,
+					"turns":     []any{},
+					"has_more":  false,
+				}))
+				return
+			}
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"thread_id": threadID,
+				"turns": []any{
+					map[string]any{
+						"turn_number": 1,
+						"user_input":  "hello",
+						"response":    nil,
+						"state":       "Cancelled",
+						"started_at":  time.Now().UTC().Format(time.RFC3339),
+						"tool_calls":  []any{},
+					},
+				},
+				"has_more": false,
+			}))
+		case r.Method == http.MethodPost && r.URL.Path == "/api/chat/send":
+			w.WriteHeader(http.StatusAccepted)
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"message_id": "00000000-0000-0000-0000-000000000010",
+				"status":     "accepted",
+			}))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+
+	_, err := client.Chat(context.Background(), ChatRequest{Message: "hello"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `chat turn entered terminal state "Cancelled"`)
+}
+
 func TestListJobs_OK(t *testing.T) {
 	jobs := JobsResponse{Jobs: []Job{{ID: "j1", State: "in_progress"}, {ID: "j2", State: "completed"}}}
 	client, _ := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
