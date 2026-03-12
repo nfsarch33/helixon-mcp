@@ -52,8 +52,8 @@ func TestNew_RegistersAllTools(t *testing.T) {
 	srv := New(new(mockClient), logger, "0.1.0")
 	count := srv.RegisteredToolCount()
 	// health + chat + list_jobs + get_job + cancel_job + search_memory +
-	// list_routines + delete_routine + list_tools = 9
-	assert.Equal(t, 9, count)
+	// list_routines + delete_routine + list_tools + reviewed_push = 10
+	assert.Equal(t, 10, count)
 }
 
 func TestRun_UnknownTransport(t *testing.T) {

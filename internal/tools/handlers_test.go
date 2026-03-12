@@ -220,6 +220,86 @@ func TestToolsListHandler_OK(t *testing.T) {
 	assert.False(t, res.IsError)
 }
 
+func TestReviewedPushHandler_ReviewOnlyPass(t *testing.T) {
+	h := &ReviewedPushHandler{
+		run: func(_ context.Context, _ string, _ string, name string, args ...string) (string, error) {
+			switch name {
+			case "git":
+				if len(args) >= 2 && args[0] == "branch" && args[1] == "--show-current" {
+					return "feature/test\n", nil
+				}
+				return "diff --git a/a.go b/a.go\n+package main\n", nil
+			case "gemini":
+				return `{"verdict":"pass","must_fix":[],"should_fix":[],"nits":[]}`, nil
+			default:
+				return "", errors.New("unexpected command")
+			}
+		},
+	}
+
+	res, err := h.Handle(context.Background(), makeReq(map[string]any{
+		"workdir":     "/tmp/repo",
+		"review_only": "true",
+	}))
+	require.NoError(t, err)
+	assert.False(t, res.IsError)
+	assert.Contains(t, res.Content[0].(mcp.TextContent).Text, `"allowed": true`)
+	assert.Contains(t, res.Content[0].(mcp.TextContent).Text, `"pushed": false`)
+}
+
+func TestReviewedPushHandler_BlocksMustFix(t *testing.T) {
+	h := &ReviewedPushHandler{
+		run: func(_ context.Context, _ string, _ string, name string, args ...string) (string, error) {
+			switch name {
+			case "git":
+				if len(args) >= 2 && args[0] == "branch" && args[1] == "--show-current" {
+					return "feature/test\n", nil
+				}
+				return "diff --git a/main.rs b/main.rs\n+.unwrap()\n", nil
+			case "gemini":
+				return `{"verdict":"fail","must_fix":[{"issue":"panic-prone unwrap","file":"main.rs","line":10}],"should_fix":[],"nits":[]}`, nil
+			default:
+				return "", errors.New("unexpected command")
+			}
+		},
+	}
+
+	res, err := h.Handle(context.Background(), makeReq(map[string]any{"workdir": "/tmp/repo"}))
+	require.NoError(t, err)
+	assert.False(t, res.IsError)
+	assert.Contains(t, res.Content[0].(mcp.TextContent).Text, `"allowed": false`)
+	assert.Contains(t, res.Content[0].(mcp.TextContent).Text, `panic-prone unwrap`)
+}
+
+func TestReviewedPushHandler_PushesOnPass(t *testing.T) {
+	var pushCalled bool
+	h := &ReviewedPushHandler{
+		run: func(_ context.Context, _ string, _ string, name string, args ...string) (string, error) {
+			switch name {
+			case "git":
+				if len(args) >= 2 && args[0] == "branch" && args[1] == "--show-current" {
+					return "feature/test\n", nil
+				}
+				if len(args) >= 1 && args[0] == "push" {
+					pushCalled = true
+					return "pushed", nil
+				}
+				return "diff --git a/a.go b/a.go\n+package main\n", nil
+			case "gemini":
+				return `{"verdict":"pass","must_fix":[],"should_fix":[{"issue":"add test","file":"a.go","line":1}],"nits":[]}`, nil
+			default:
+				return "", errors.New("unexpected command")
+			}
+		},
+	}
+
+	res, err := h.Handle(context.Background(), makeReq(map[string]any{"workdir": "/tmp/repo"}))
+	require.NoError(t, err)
+	assert.False(t, res.IsError)
+	assert.True(t, pushCalled)
+	assert.Contains(t, res.Content[0].(mcp.TextContent).Text, `"pushed": true`)
+}
+
 func TestToolsListHandler_Error(t *testing.T) {
 	m := new(MockIronclawClient)
 	m.On("ListTools", context.Background()).Return(&ironclaw.ToolsResponse{}, errors.New("unavailable"))

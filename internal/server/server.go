@@ -65,6 +65,10 @@ func (s *Server) buildMCPServer() *server.MCPServer {
 	srv.AddTool(toolsList.Tool(), toolsList.Handle)
 	s.toolCount++
 
+	reviewedPush := tools.NewReviewedPushHandler()
+	srv.AddTool(reviewedPush.Tool(), reviewedPush.Handle)
+	s.toolCount++
+
 	return srv
 }
 

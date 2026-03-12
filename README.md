@@ -18,6 +18,7 @@ A production-ready **MCP (Model Context Protocol) server** written in Go that br
 | `ironclaw_list_routines` | List all scheduled routines |
 | `ironclaw_delete_routine` | Delete a routine |
 | `ironclaw_list_tools` | List all tools registered in IronClaw extensions |
+| `ironclaw_reviewed_push` | Run Gemini diff review, then push only when no must-fix issues remain |
 
 ## Quick Start
 
