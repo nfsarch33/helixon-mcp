@@ -8,13 +8,21 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 )
+
+// MaxResponseBytes limits response body size to prevent memory exhaustion.
+const MaxResponseBytes = 10 << 20 // 10 MiB
+
+const chatPollInterval = 250 * time.Millisecond
 
 // Client is an HTTP client for the IronClaw web gateway API.
 type Client struct {
 	baseURL    string
 	apiKey     string
+	timeout    time.Duration
 	httpClient HTTPDoer
 }
 
@@ -28,6 +36,7 @@ func NewClient(baseURL, apiKey string, timeout time.Duration) *Client {
 	return &Client{
 		baseURL: baseURL,
 		apiKey:  apiKey,
+		timeout: timeout,
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
@@ -39,30 +48,35 @@ func NewClientWithHTTP(baseURL, apiKey string, doer HTTPDoer) *Client {
 	return &Client{
 		baseURL:    baseURL,
 		apiKey:     apiKey,
+		timeout:    30 * time.Second,
 		httpClient: doer,
 	}
 }
 
 // --- Request / Response types -----------------------------------------------
 
-// ChatRequest is the payload for POST /api/chat.
+// ChatRequest is the payload for the bridge-level chat operation.
 type ChatRequest struct {
 	Message   string `json:"message"`
 	SessionID string `json:"session_id,omitempty"`
 }
 
-// ChatResponse is returned by POST /api/chat.
+// ChatResponse is returned once the async IronClaw chat turn has completed.
 type ChatResponse struct {
 	Response  string `json:"response"`
-	JobID     string `json:"job_id,omitempty"`
+	MessageID string `json:"message_id,omitempty"`
 	SessionID string `json:"session_id,omitempty"`
+	Status    string `json:"status,omitempty"`
 }
 
 // Job represents a background job in IronClaw.
 type Job struct {
 	ID        string `json:"id"`
-	Status    string `json:"status"`
+	Title     string `json:"title,omitempty"`
+	State     string `json:"state"`
+	UserID    string `json:"user_id,omitempty"`
 	CreatedAt string `json:"created_at,omitempty"`
+	StartedAt string `json:"started_at,omitempty"`
 	UpdatedAt string `json:"updated_at,omitempty"`
 	Error     string `json:"error,omitempty"`
 }
@@ -80,23 +94,30 @@ type MemorySearchRequest struct {
 
 // MemoryEntry is a single memory/workspace entry.
 type MemoryEntry struct {
-	Path    string `json:"path"`
-	Content string `json:"content"`
+	Path    string  `json:"path"`
+	Content string  `json:"content"`
 	Score   float64 `json:"score,omitempty"`
 }
 
 // MemorySearchResponse is returned by POST /api/memory/search.
 type MemorySearchResponse struct {
-	Entries []MemoryEntry `json:"entries"`
+	Results []MemoryEntry `json:"results"`
 }
 
 // Routine represents an IronClaw scheduled routine.
 type Routine struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Schedule string `json:"schedule"`
-	Enabled  bool   `json:"enabled"`
-	LastRun  string `json:"last_run,omitempty"`
+	ID                  string `json:"id"`
+	Name                string `json:"name"`
+	Description         string `json:"description,omitempty"`
+	Enabled             bool   `json:"enabled"`
+	TriggerType         string `json:"trigger_type,omitempty"`
+	TriggerSummary      string `json:"trigger_summary,omitempty"`
+	ActionType          string `json:"action_type,omitempty"`
+	Status              string `json:"status,omitempty"`
+	LastRunAt           string `json:"last_run_at,omitempty"`
+	NextFireAt          string `json:"next_fire_at,omitempty"`
+	RunCount            uint64 `json:"run_count,omitempty"`
+	ConsecutiveFailures uint32 `json:"consecutive_failures,omitempty"`
 }
 
 // RoutinesResponse is returned by GET /api/routines.
@@ -104,18 +125,10 @@ type RoutinesResponse struct {
 	Routines []Routine `json:"routines"`
 }
 
-// CreateRoutineRequest is the payload for POST /api/routines.
-type CreateRoutineRequest struct {
-	Name     string `json:"name"`
-	Schedule string `json:"schedule"`
-	Prompt   string `json:"prompt"`
-}
-
 // ToolInfo represents a registered IronClaw tool.
 type ToolInfo struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	Source      string `json:"source,omitempty"`
 }
 
 // ToolsResponse is returned by GET /api/tools.
@@ -123,10 +136,46 @@ type ToolsResponse struct {
 	Tools []ToolInfo `json:"tools"`
 }
 
-// HealthResponse is returned by GET /health.
+// HealthResponse is returned by GET /api/health.
 type HealthResponse struct {
 	Status  string `json:"status"`
-	Version string `json:"version,omitempty"`
+	Channel string `json:"channel,omitempty"`
+}
+
+type chatSendRequest struct {
+	Content  string `json:"content"`
+	ThreadID string `json:"thread_id,omitempty"`
+}
+
+type chatSendAcceptedResponse struct {
+	MessageID string `json:"message_id"`
+	Status    string `json:"status"`
+}
+
+type threadInfo struct {
+	ID string `json:"id"`
+}
+
+type threadListResponse struct {
+	AssistantThread *threadInfo  `json:"assistant_thread"`
+	Threads         []threadInfo `json:"threads"`
+	ActiveThread    string       `json:"active_thread"`
+}
+
+type historyTurn struct {
+	UserInput string            `json:"user_input"`
+	Response  *string           `json:"response"`
+	State     string            `json:"state"`
+	ToolCalls []historyToolCall `json:"tool_calls"`
+}
+
+type historyResponse struct {
+	ThreadID string        `json:"thread_id"`
+	Turns    []historyTurn `json:"turns"`
+}
+
+type historyToolCall struct {
+	Error string `json:"error"`
 }
 
 // --- API methods -------------------------------------------------------------
@@ -134,19 +183,43 @@ type HealthResponse struct {
 // Health checks whether IronClaw is reachable and healthy.
 func (c *Client) Health(ctx context.Context) (*HealthResponse, error) {
 	var resp HealthResponse
-	if err := c.get(ctx, "/health", &resp); err != nil {
+	if err := c.get(ctx, "/api/health", &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
 }
 
-// Chat sends a message to IronClaw and returns the response.
+// Chat sends a message to IronClaw, then polls history until a response is available.
 func (c *Client) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
-	var resp ChatResponse
-	if err := c.post(ctx, "/api/chat", req, &resp); err != nil {
+	threadID, err := c.resolveThreadID(ctx, req.SessionID)
+	if err != nil {
+		return nil, fmt.Errorf("resolving thread: %w", err)
+	}
+
+	initialHistory, err := c.getHistory(ctx, threadID, 100)
+	if err != nil {
+		return nil, fmt.Errorf("loading chat history: %w", err)
+	}
+
+	var accepted chatSendAcceptedResponse
+	if err := c.post(ctx, "/api/chat/send", chatSendRequest{
+		Content:  req.Message,
+		ThreadID: threadID,
+	}, &accepted); err != nil {
 		return nil, err
 	}
-	return &resp, nil
+
+	response, err := c.waitForChatResponse(ctx, threadID, len(initialHistory.Turns), req.Message)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ChatResponse{
+		Response:  response,
+		MessageID: accepted.MessageID,
+		SessionID: threadID,
+		Status:    "completed",
+	}, nil
 }
 
 // ListJobs returns all jobs from IronClaw.
@@ -190,15 +263,6 @@ func (c *Client) ListRoutines(ctx context.Context) (*RoutinesResponse, error) {
 	return &resp, nil
 }
 
-// CreateRoutine creates a new scheduled routine.
-func (c *Client) CreateRoutine(ctx context.Context, req CreateRoutineRequest) (*Routine, error) {
-	var resp Routine
-	if err := c.post(ctx, "/api/routines", req, &resp); err != nil {
-		return nil, err
-	}
-	return &resp, nil
-}
-
 // DeleteRoutine deletes a routine by ID.
 func (c *Client) DeleteRoutine(ctx context.Context, routineID string) error {
 	return c.delete(ctx, fmt.Sprintf("/api/routines/%s", routineID))
@@ -207,7 +271,7 @@ func (c *Client) DeleteRoutine(ctx context.Context, routineID string) error {
 // ListTools returns all registered tools.
 func (c *Client) ListTools(ctx context.Context) (*ToolsResponse, error) {
 	var resp ToolsResponse
-	if err := c.get(ctx, "/api/tools", &resp); err != nil {
+	if err := c.get(ctx, "/api/extensions/tools", &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -220,6 +284,15 @@ func (c *Client) get(ctx context.Context, path string, out interface{}) error {
 	if err != nil {
 		return fmt.Errorf("building GET request: %w", err)
 	}
+	return c.do(req, out)
+}
+
+func (c *Client) getWithQuery(ctx context.Context, path string, query url.Values, out interface{}) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	if err != nil {
+		return fmt.Errorf("building GET request: %w", err)
+	}
+	req.URL.RawQuery = query.Encode()
 	return c.do(req, out)
 }
 
@@ -262,16 +335,112 @@ func (c *Client) do(req *http.Request, out interface{}) error {
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
+	limited := io.LimitReader(resp.Body, MaxResponseBytes)
+
 	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(limited)
 		return fmt.Errorf("ironclaw API error %d: %s", resp.StatusCode, string(body))
 	}
 
 	if out == nil {
 		return nil
 	}
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+	if err := json.NewDecoder(limited).Decode(out); err != nil {
 		return fmt.Errorf("decoding response: %w", err)
 	}
 	return nil
+}
+
+func (c *Client) resolveThreadID(ctx context.Context, sessionID string) (string, error) {
+	if sessionID != "" {
+		return sessionID, nil
+	}
+
+	var threads threadListResponse
+	if err := c.get(ctx, "/api/chat/threads", &threads); err == nil {
+		switch {
+		case threads.AssistantThread != nil && threads.AssistantThread.ID != "":
+			return threads.AssistantThread.ID, nil
+		case threads.ActiveThread != "":
+			return threads.ActiveThread, nil
+		case len(threads.Threads) > 0 && threads.Threads[0].ID != "":
+			return threads.Threads[0].ID, nil
+		}
+	}
+
+	var thread threadInfo
+	if err := c.post(ctx, "/api/chat/thread/new", nil, &thread); err != nil {
+		return "", fmt.Errorf("creating chat thread: %w", err)
+	}
+	if thread.ID == "" {
+		return "", fmt.Errorf("creating chat thread: missing thread id")
+	}
+	return thread.ID, nil
+}
+
+func (c *Client) getHistory(ctx context.Context, threadID string, limit int) (*historyResponse, error) {
+	var history historyResponse
+	query := url.Values{}
+	query.Set("thread_id", threadID)
+	if limit > 0 {
+		query.Set("limit", fmt.Sprintf("%d", limit))
+	}
+	if err := c.getWithQuery(ctx, "/api/chat/history", query, &history); err != nil {
+		return nil, err
+	}
+	return &history, nil
+}
+
+func (c *Client) waitForChatResponse(ctx context.Context, threadID string, initialTurnCount int, message string) (string, error) {
+	pollCtx := ctx
+	cancel := func() {}
+	if _, ok := ctx.Deadline(); !ok && c.timeout > 0 {
+		pollCtx, cancel = context.WithTimeout(ctx, c.timeout)
+	}
+	defer cancel()
+
+	ticker := time.NewTicker(chatPollInterval)
+	defer ticker.Stop()
+
+	for {
+		history, err := c.getHistory(pollCtx, threadID, initialTurnCount+10)
+		if err != nil {
+			return "", fmt.Errorf("loading chat history: %w", err)
+		}
+
+		for i := len(history.Turns) - 1; i >= initialTurnCount && i >= 0; i-- {
+			turn := history.Turns[i]
+			if turn.UserInput != message {
+				continue
+			}
+			if turn.Response != nil && *turn.Response != "" {
+				return *turn.Response, nil
+			}
+			if err := terminalTurnError(turn); err != "" {
+				return "", fmt.Errorf("backend turn failed: %s", err)
+			}
+		}
+
+		select {
+		case <-pollCtx.Done():
+			return "", fmt.Errorf("waiting for chat response: %w", pollCtx.Err())
+		case <-ticker.C:
+		}
+	}
+}
+
+func terminalTurnError(turn historyTurn) string {
+	state := strings.ToLower(turn.State)
+	if state != "failed" && state != "cancelled" {
+		return ""
+	}
+	for _, toolCall := range turn.ToolCalls {
+		if toolCall.Error != "" {
+			return toolCall.Error
+		}
+	}
+	if turn.Response != nil && *turn.Response != "" {
+		return *turn.Response
+	}
+	return fmt.Sprintf("chat turn entered terminal state %q without a response", turn.State)
 }

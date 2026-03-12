@@ -53,8 +53,9 @@ func (h *ChatHandler) Handle(ctx context.Context, req mcp.CallToolRequest) (*mcp
 
 	result := map[string]any{
 		"response":   resp.Response,
-		"job_id":     resp.JobID,
+		"message_id": resp.MessageID,
 		"session_id": resp.SessionID,
+		"status":     resp.Status,
 	}
 	return jsonResult(result)
 }

@@ -47,11 +47,6 @@ func (m *MockIronclawClient) ListRoutines(ctx context.Context) (*ironclaw.Routin
 	return args.Get(0).(*ironclaw.RoutinesResponse), args.Error(1)
 }
 
-func (m *MockIronclawClient) CreateRoutine(ctx context.Context, req ironclaw.CreateRoutineRequest) (*ironclaw.Routine, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*ironclaw.Routine), args.Error(1)
-}
-
 func (m *MockIronclawClient) DeleteRoutine(ctx context.Context, routineID string) error {
 	args := m.Called(ctx, routineID)
 	return args.Error(0)
