@@ -59,9 +59,10 @@ docker-run:
 	  -e IRONCLAW_API_KEY=$${IRONCLAW_API_KEY:-} \
 	  $(DOCKER_IMG):$(DOCKER_TAG)
 
-# Deterministic local smoke test
+# Deterministic local smoke test (pass SMOKE_ARGS="--all --report" for extended mode)
+SMOKE_ARGS ?=
 smoke:
-	./scripts/smoke-test.sh
+	./scripts/smoke-test.sh $(SMOKE_ARGS)
 
 # Alias
 all: check build

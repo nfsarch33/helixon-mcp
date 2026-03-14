@@ -18,6 +18,11 @@ A production-ready **MCP (Model Context Protocol) server** written in Go that br
 | `ironclaw_list_routines` | List all scheduled routines |
 | `ironclaw_delete_routine` | Delete a routine |
 | `ironclaw_list_tools` | List all tools registered in IronClaw extensions |
+| `ironclaw_stack_status` | Combined health of LLM router nodes, GPU availability, and gateway |
+| `ironclaw_spawn_agent` | Spawn a new agent job with model and tier selection |
+| `ironclaw_send_task` | Send a strategic task for background execution |
+| `ironclaw_agent_status` | Agent thread states, active/total job counts, last heartbeat |
+| `ironclaw_get_metrics` | Query Prometheus for agent metrics (requires `PROMETHEUS_URL`) |
 | `ironclaw_reviewed_push` | Run Gemini diff review, then push only when no must-fix issues remain |
 
 ## Quick Start
@@ -148,6 +153,21 @@ The supported local setup for Cursor integration:
    - `ironclaw_health`
    - One configurable stateful tool (`ironclaw_list_jobs` by default, or `SMOKE_STATEFUL_TOOL=ironclaw_chat`)
 5. Add `ironclaw-mcp` to `~/.cursor/mcp.json` and reload MCP servers
+
+#### `--all` and `--report` flags
+
+```bash
+# Test all 15 tools with deterministic payloads
+make smoke SMOKE_ARGS="--all"
+
+# Get JSON test results (pipe to jq, CI artifacts, etc.)
+./scripts/smoke-test.sh --all --report
+
+# JSON output includes per-tool pass/fail/skip status and timing
+./scripts/smoke-test.sh --all --report | jq '.summary'
+```
+
+The `--all` flag exercises every tool with safe, deterministic payloads (destructive tools like `ironclaw_delete_routine` and slow tools like `ironclaw_chat` are skipped with documented reasons). The `--report` flag outputs a structured JSON report suitable for CI pipelines.
 
 ### Troubleshooting
 
