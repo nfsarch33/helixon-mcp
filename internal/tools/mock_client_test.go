@@ -56,3 +56,13 @@ func (m *MockIronclawClient) ListTools(ctx context.Context) (*ironclaw.ToolsResp
 	args := m.Called(ctx)
 	return args.Get(0).(*ironclaw.ToolsResponse), args.Error(1)
 }
+
+func (m *MockIronclawClient) StackStatus(ctx context.Context, routerURL string) (*ironclaw.StackStatusResponse, error) {
+	args := m.Called(ctx, routerURL)
+	return args.Get(0).(*ironclaw.StackStatusResponse), args.Error(1)
+}
+
+func (m *MockIronclawClient) SpawnAgent(ctx context.Context, req ironclaw.SpawnAgentRequest) (*ironclaw.SpawnAgentResponse, error) {
+	args := m.Called(ctx, req)
+	return args.Get(0).(*ironclaw.SpawnAgentResponse), args.Error(1)
+}

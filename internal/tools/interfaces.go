@@ -20,6 +20,8 @@ type IronclawClient interface {
 	ListRoutines(ctx context.Context) (*ironclaw.RoutinesResponse, error)
 	DeleteRoutine(ctx context.Context, routineID string) error
 	ListTools(ctx context.Context) (*ironclaw.ToolsResponse, error)
+	StackStatus(ctx context.Context, routerURL string) (*ironclaw.StackStatusResponse, error)
+	SpawnAgent(ctx context.Context, req ironclaw.SpawnAgentRequest) (*ironclaw.SpawnAgentResponse, error)
 }
 
 // requiredString extracts a required string argument from a tool call request.

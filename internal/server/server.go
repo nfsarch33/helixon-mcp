@@ -65,6 +65,14 @@ func (s *Server) buildMCPServer() *server.MCPServer {
 	srv.AddTool(toolsList.Tool(), toolsList.Handle)
 	s.toolCount++
 
+	stackStatus := tools.NewStackStatusHandler(s.client)
+	srv.AddTool(stackStatus.Tool(), stackStatus.Handle)
+	s.toolCount++
+
+	spawnAgent := tools.NewSpawnAgentHandler(s.client)
+	srv.AddTool(spawnAgent.Tool(), spawnAgent.Handle)
+	s.toolCount++
+
 	reviewedPush := tools.NewReviewedPushHandler()
 	srv.AddTool(reviewedPush.Tool(), reviewedPush.Handle)
 	s.toolCount++

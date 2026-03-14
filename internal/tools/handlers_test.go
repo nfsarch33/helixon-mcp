@@ -308,3 +308,86 @@ func TestToolsListHandler_Error(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, res.IsError)
 }
+
+// --- Stack Status ---
+
+func TestStackStatusHandler_OK(t *testing.T) {
+	m := new(MockIronclawClient)
+	m.On("StackStatus", context.Background(), "http://127.0.0.1:8080").
+		Return(&ironclaw.StackStatusResponse{
+			Router: &ironclaw.RouterHealthResponse{
+				OK:           true,
+				HealthyNodes: 2,
+				TotalNodes:   2,
+				Nodes: []ironclaw.RouterNode{
+					{Name: "gpu-27b", Tier: "agent", Healthy: true},
+					{Name: "gpu-9b", Tier: "fast", Healthy: true},
+				},
+			},
+			Gateway: &ironclaw.GatewayStatusResponse{
+				Status:      "ok",
+				Uptime:      "12h",
+				Connections: 5,
+			},
+		}, nil)
+	h := &StackStatusHandler{client: m, routerURL: "http://127.0.0.1:8080"}
+	res, err := h.Handle(context.Background(), makeReq(nil))
+	require.NoError(t, err)
+	assert.False(t, res.IsError)
+	text := res.Content[0].(mcp.TextContent).Text
+	assert.Contains(t, text, "gpu-27b")
+	assert.Contains(t, text, "ok")
+}
+
+func TestStackStatusHandler_RouterOnly(t *testing.T) {
+	m := new(MockIronclawClient)
+	m.On("StackStatus", context.Background(), "http://127.0.0.1:8080").
+		Return(&ironclaw.StackStatusResponse{
+			Router: &ironclaw.RouterHealthResponse{OK: true, HealthyNodes: 1},
+		}, nil)
+	h := &StackStatusHandler{client: m, routerURL: "http://127.0.0.1:8080"}
+	res, err := h.Handle(context.Background(), makeReq(nil))
+	require.NoError(t, err)
+	assert.False(t, res.IsError)
+}
+
+func TestStackStatusHandler_Error(t *testing.T) {
+	m := new(MockIronclawClient)
+	m.On("StackStatus", context.Background(), "http://127.0.0.1:8080").
+		Return(&ironclaw.StackStatusResponse{}, errors.New("connection refused"))
+	h := &StackStatusHandler{client: m, routerURL: "http://127.0.0.1:8080"}
+	res, err := h.Handle(context.Background(), makeReq(nil))
+	require.NoError(t, err)
+	assert.True(t, res.IsError)
+}
+
+// --- Spawn Agent ---
+
+func TestSpawnAgentHandler_OK(t *testing.T) {
+	m := new(MockIronclawClient)
+	m.On("SpawnAgent", context.Background(), ironclaw.SpawnAgentRequest{Name: "auditor", Model: "qwen3.5-27b", Tier: "agent"}).
+		Return(&ironclaw.SpawnAgentResponse{JobID: "j42", Status: "accepted", Model: "qwen3.5-27b"}, nil)
+	h := NewSpawnAgentHandler(m)
+	res, err := h.Handle(context.Background(), makeReq(map[string]any{"name": "auditor", "model": "qwen3.5-27b", "tier": "agent"}))
+	require.NoError(t, err)
+	assert.False(t, res.IsError)
+	text := res.Content[0].(mcp.TextContent).Text
+	assert.Contains(t, text, "j42")
+}
+
+func TestSpawnAgentHandler_MissingName(t *testing.T) {
+	h := NewSpawnAgentHandler(new(MockIronclawClient))
+	res, err := h.Handle(context.Background(), makeReq(map[string]any{}))
+	require.NoError(t, err)
+	assert.True(t, res.IsError)
+}
+
+func TestSpawnAgentHandler_Error(t *testing.T) {
+	m := new(MockIronclawClient)
+	m.On("SpawnAgent", context.Background(), ironclaw.SpawnAgentRequest{Name: "test"}).
+		Return(&ironclaw.SpawnAgentResponse{}, errors.New("gateway unreachable"))
+	h := NewSpawnAgentHandler(m)
+	res, err := h.Handle(context.Background(), makeReq(map[string]any{"name": "test"}))
+	require.NoError(t, err)
+	assert.True(t, res.IsError)
+}

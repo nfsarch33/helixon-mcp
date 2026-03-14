@@ -46,14 +46,22 @@ func (m *mockClient) ListTools(ctx context.Context) (*ironclaw.ToolsResponse, er
 	args := m.Called(ctx)
 	return args.Get(0).(*ironclaw.ToolsResponse), args.Error(1)
 }
+func (m *mockClient) StackStatus(ctx context.Context, routerURL string) (*ironclaw.StackStatusResponse, error) {
+	args := m.Called(ctx, routerURL)
+	return args.Get(0).(*ironclaw.StackStatusResponse), args.Error(1)
+}
+func (m *mockClient) SpawnAgent(ctx context.Context, req ironclaw.SpawnAgentRequest) (*ironclaw.SpawnAgentResponse, error) {
+	args := m.Called(ctx, req)
+	return args.Get(0).(*ironclaw.SpawnAgentResponse), args.Error(1)
+}
 
 func TestNew_RegistersAllTools(t *testing.T) {
 	logger := zap.NewNop()
 	srv := New(new(mockClient), logger, "0.1.0")
 	count := srv.RegisteredToolCount()
 	// health + chat + list_jobs + get_job + cancel_job + search_memory +
-	// list_routines + delete_routine + list_tools + reviewed_push = 10
-	assert.Equal(t, 10, count)
+	// list_routines + delete_routine + list_tools + stack_status + spawn_agent + reviewed_push = 12
+	assert.Equal(t, 12, count)
 }
 
 func TestRun_UnknownTransport(t *testing.T) {

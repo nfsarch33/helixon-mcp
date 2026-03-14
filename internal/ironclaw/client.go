@@ -142,6 +142,54 @@ type HealthResponse struct {
 	Channel string `json:"channel,omitempty"`
 }
 
+// RouterHealthResponse is returned by GET /healthz on the llm-cluster-router.
+type RouterHealthResponse struct {
+	OK             bool         `json:"ok"`
+	HealthyNodes   int          `json:"healthy_nodes"`
+	TotalNodes     int          `json:"total_nodes"`
+	QueueDepth     int          `json:"queue_depth"`
+	Inflight       int          `json:"inflight_requests"`
+	MaxConcurrency int          `json:"max_concurrency"`
+	MaxQueueDepth  int          `json:"max_queue_depth"`
+	Nodes          []RouterNode `json:"nodes"`
+}
+
+// RouterNode is a single upstream node in the router health response.
+type RouterNode struct {
+	Name    string   `json:"name"`
+	Tier    string   `json:"tier"`
+	URL     string   `json:"url"`
+	Models  []string `json:"models"`
+	Healthy bool     `json:"healthy"`
+}
+
+// GatewayStatusResponse is returned by GET /api/gateway/status.
+type GatewayStatusResponse struct {
+	Status      string `json:"status"`
+	Uptime      string `json:"uptime,omitempty"`
+	Connections int    `json:"connections,omitempty"`
+}
+
+// StackStatusResponse combines router and gateway health for a unified view.
+type StackStatusResponse struct {
+	Router  *RouterHealthResponse  `json:"router,omitempty"`
+	Gateway *GatewayStatusResponse `json:"gateway,omitempty"`
+}
+
+// SpawnAgentRequest is the payload for POST /api/jobs (spawn a new agent job).
+type SpawnAgentRequest struct {
+	Name  string `json:"name"`
+	Model string `json:"model,omitempty"`
+	Tier  string `json:"tier,omitempty"`
+}
+
+// SpawnAgentResponse is returned by the spawn operation.
+type SpawnAgentResponse struct {
+	JobID  string `json:"job_id"`
+	Status string `json:"status"`
+	Model  string `json:"model,omitempty"`
+}
+
 type chatSendRequest struct {
 	Content  string `json:"content"`
 	ThreadID string `json:"thread_id,omitempty"`
@@ -275,6 +323,47 @@ func (c *Client) ListTools(ctx context.Context) (*ToolsResponse, error) {
 		return nil, err
 	}
 	return &resp, nil
+}
+
+// StackStatus returns combined router and gateway health.
+// routerURL is the base URL of the llm-cluster-router (e.g., http://127.0.0.1:8080).
+// If routerURL is empty, the router section is omitted.
+func (c *Client) StackStatus(ctx context.Context, routerURL string) (*StackStatusResponse, error) {
+	result := &StackStatusResponse{}
+
+	if routerURL != "" {
+		routerClient := &Client{
+			baseURL:    routerURL,
+			httpClient: c.httpClient,
+		}
+		var router RouterHealthResponse
+		if err := routerClient.get(ctx, "/healthz", &router); err == nil {
+			result.Router = &router
+		}
+	}
+
+	var gateway GatewayStatusResponse
+	if err := c.get(ctx, "/api/gateway/status", &gateway); err == nil {
+		result.Gateway = &gateway
+	}
+
+	return result, nil
+}
+
+// SpawnAgent creates a new agent job in IronClaw.
+func (c *Client) SpawnAgent(ctx context.Context, req SpawnAgentRequest) (*SpawnAgentResponse, error) {
+	chatReq := chatSendRequest{
+		Content: fmt.Sprintf("[spawn-agent] name=%s model=%s tier=%s", req.Name, req.Model, req.Tier),
+	}
+	var accepted chatSendAcceptedResponse
+	if err := c.post(ctx, "/api/chat/send", chatReq, &accepted); err != nil {
+		return nil, fmt.Errorf("spawning agent: %w", err)
+	}
+	return &SpawnAgentResponse{
+		JobID:  accepted.MessageID,
+		Status: accepted.Status,
+		Model:  req.Model,
+	}, nil
 }
 
 // --- HTTP helpers -----------------------------------------------------------
