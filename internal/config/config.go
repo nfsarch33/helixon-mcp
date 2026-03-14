@@ -38,8 +38,11 @@ type Config struct {
 	LogLevel string
 
 	// AllowNonLocalhost permits IRONCLAW_BASE_URL to point to non-loopback hosts.
-	// When false (default), only localhost/127.0.0.1/[::1] are accepted for secure local operation.
 	AllowNonLocalhost bool
+
+	// PrometheusURL is the optional base URL for Prometheus metric queries.
+	// If empty, the ironclaw_get_metrics tool is not registered.
+	PrometheusURL string
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -51,6 +54,7 @@ func Load() (*Config, error) {
 		SSEAddr:           envOrDefault("MCP_SSE_ADDR", ":8080"),
 		LogLevel:          envOrDefault("LOG_LEVEL", "info"),
 		AllowNonLocalhost: envOrDefault("IRONCLAW_ALLOW_NON_LOCALHOST", "") == "true",
+		PrometheusURL:     os.Getenv("PROMETHEUS_URL"),
 	}
 
 	timeoutSec := envOrDefault("IRONCLAW_TIMEOUT_SECONDS", "30")

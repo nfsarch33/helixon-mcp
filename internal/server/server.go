@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mark3labs/mcp-go/server"
+	"github.com/mark3labs/mcp-go/mcp"
+	mcpserver "github.com/mark3labs/mcp-go/server"
 	"github.com/nfsarch33/ironclaw-mcp/internal/tools"
 	"go.uber.org/zap"
 )
@@ -14,16 +15,23 @@ import (
 // Server wraps the MCP server and its dependencies.
 type Server struct {
 	client    tools.IronclawClient
+	prom      tools.PrometheusQuerier
 	logger    *zap.Logger
 	version   string
-	mcp       *server.MCPServer
+	mcp       *mcpserver.MCPServer
 	toolCount int
 }
 
 // New creates and configures a new MCP Server with all IronClaw tools registered.
 func New(client tools.IronclawClient, logger *zap.Logger, version string) *Server {
+	return NewWithPrometheus(client, nil, logger, version)
+}
+
+// NewWithPrometheus creates an MCP Server with Prometheus support for metrics queries.
+func NewWithPrometheus(client tools.IronclawClient, prom tools.PrometheusQuerier, logger *zap.Logger, version string) *Server {
 	s := &Server{
 		client:  client,
+		prom:    prom,
 		logger:  logger,
 		version: version,
 	}
@@ -31,51 +39,58 @@ func New(client tools.IronclawClient, logger *zap.Logger, version string) *Serve
 	return s
 }
 
-func (s *Server) buildMCPServer() *server.MCPServer {
-	srv := server.NewMCPServer(
+func (s *Server) buildMCPServer() *mcpserver.MCPServer {
+	srv := mcpserver.NewMCPServer(
 		"ironclaw-mcp",
 		s.version,
-		server.WithToolCapabilities(true),
+		mcpserver.WithToolCapabilities(true),
 	)
 
+	addTool := func(t mcp.Tool, h mcpserver.ToolHandlerFunc) {
+		srv.AddTool(t, h)
+		s.toolCount++
+	}
+
 	health := tools.NewHealthHandler(s.client)
-	srv.AddTool(health.Tool(), health.Handle)
-	s.toolCount++
+	addTool(health.Tool(), health.Handle)
 
 	chat := tools.NewChatHandler(s.client)
-	srv.AddTool(chat.Tool(), chat.Handle)
-	s.toolCount++
+	addTool(chat.Tool(), chat.Handle)
 
 	jobs := tools.NewJobsHandler(s.client)
-	srv.AddTool(jobs.ListJobsTool(), jobs.HandleListJobs)
-	srv.AddTool(jobs.GetJobTool(), jobs.HandleGetJob)
-	srv.AddTool(jobs.CancelJobTool(), jobs.HandleCancelJob)
-	s.toolCount += 3
+	addTool(jobs.ListJobsTool(), jobs.HandleListJobs)
+	addTool(jobs.GetJobTool(), jobs.HandleGetJob)
+	addTool(jobs.CancelJobTool(), jobs.HandleCancelJob)
 
 	mem := tools.NewMemoryHandler(s.client)
-	srv.AddTool(mem.Tool(), mem.Handle)
-	s.toolCount++
+	addTool(mem.Tool(), mem.Handle)
 
 	routines := tools.NewRoutinesHandler(s.client)
-	srv.AddTool(routines.ListRoutinesTool(), routines.HandleListRoutines)
-	srv.AddTool(routines.DeleteRoutineTool(), routines.HandleDeleteRoutine)
-	s.toolCount += 2
+	addTool(routines.ListRoutinesTool(), routines.HandleListRoutines)
+	addTool(routines.DeleteRoutineTool(), routines.HandleDeleteRoutine)
 
 	toolsList := tools.NewToolsListHandler(s.client)
-	srv.AddTool(toolsList.Tool(), toolsList.Handle)
-	s.toolCount++
+	addTool(toolsList.Tool(), toolsList.Handle)
 
 	stackStatus := tools.NewStackStatusHandler(s.client)
-	srv.AddTool(stackStatus.Tool(), stackStatus.Handle)
-	s.toolCount++
+	addTool(stackStatus.Tool(), stackStatus.Handle)
 
 	spawnAgent := tools.NewSpawnAgentHandler(s.client)
-	srv.AddTool(spawnAgent.Tool(), spawnAgent.Handle)
-	s.toolCount++
+	addTool(spawnAgent.Tool(), spawnAgent.Handle)
 
 	reviewedPush := tools.NewReviewedPushHandler()
-	srv.AddTool(reviewedPush.Tool(), reviewedPush.Handle)
-	s.toolCount++
+	addTool(reviewedPush.Tool(), reviewedPush.Handle)
+
+	sendTask := tools.NewSendTaskHandler(s.client)
+	addTool(sendTask.Tool(), sendTask.Handle)
+
+	agentStatus := tools.NewAgentStatusHandler(s.client)
+	addTool(agentStatus.Tool(), agentStatus.Handle)
+
+	if s.prom != nil {
+		getMetrics := tools.NewGetMetricsHandler(s.prom)
+		addTool(getMetrics.Tool(), getMetrics.Handle)
+	}
 
 	return srv
 }
@@ -85,7 +100,7 @@ func (s *Server) Run(ctx context.Context, transport string) error {
 	s.logger.Info("MCP server ready", zap.String("transport", transport))
 	switch transport {
 	case "stdio":
-		stdioSrv := server.NewStdioServer(s.mcp)
+		stdioSrv := mcpserver.NewStdioServer(s.mcp)
 		return stdioSrv.Listen(ctx, os.Stdin, os.Stdout)
 	case "sse":
 		return fmt.Errorf("SSE transport not yet implemented; use stdio")
@@ -95,7 +110,7 @@ func (s *Server) Run(ctx context.Context, transport string) error {
 }
 
 // MCPServer exposes the underlying MCP server (for testing).
-func (s *Server) MCPServer() *server.MCPServer {
+func (s *Server) MCPServer() *mcpserver.MCPServer {
 	return s.mcp
 }
 

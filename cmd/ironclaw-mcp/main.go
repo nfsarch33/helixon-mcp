@@ -11,6 +11,7 @@ import (
 	"github.com/nfsarch33/ironclaw-mcp/internal/config"
 	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
 	"github.com/nfsarch33/ironclaw-mcp/internal/server"
+	"github.com/nfsarch33/ironclaw-mcp/internal/tools"
 	"go.uber.org/zap"
 )
 
@@ -44,7 +45,13 @@ func run() error {
 
 	client := ironclaw.NewClient(cfg.IronclawBaseURL, cfg.APIKey, cfg.Timeout)
 
-	srv := server.New(client, logger, version)
+	var prom tools.PrometheusQuerier
+	if cfg.PrometheusURL != "" {
+		prom = tools.NewHTTPPrometheusQuerier(cfg.PrometheusURL)
+		logger.Info("prometheus enabled", zap.String("url", cfg.PrometheusURL))
+	}
+
+	srv := server.NewWithPrometheus(client, prom, logger, version)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()

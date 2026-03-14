@@ -22,6 +22,13 @@ type IronclawClient interface {
 	ListTools(ctx context.Context) (*ironclaw.ToolsResponse, error)
 	StackStatus(ctx context.Context, routerURL string) (*ironclaw.StackStatusResponse, error)
 	SpawnAgent(ctx context.Context, req ironclaw.SpawnAgentRequest) (*ironclaw.SpawnAgentResponse, error)
+	SendTask(ctx context.Context, req ironclaw.SendTaskRequest) (*ironclaw.SendTaskResponse, error)
+	AgentStatus(ctx context.Context) (*ironclaw.AgentStatusResponse, error)
+}
+
+// PrometheusQuerier queries Prometheus for metrics.
+type PrometheusQuerier interface {
+	Query(ctx context.Context, query string) (string, error)
 }
 
 // requiredString extracts a required string argument from a tool call request.

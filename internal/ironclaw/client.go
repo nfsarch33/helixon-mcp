@@ -136,6 +136,35 @@ type ToolsResponse struct {
 	Tools []ToolInfo `json:"tools"`
 }
 
+// SendTaskRequest is the payload for POST /api/chat/send.
+type SendTaskRequest struct {
+	Message   string `json:"message"`
+	SessionID string `json:"session_id,omitempty"`
+}
+
+// SendTaskResponse is returned by POST /api/chat/send.
+type SendTaskResponse struct {
+	JobID     string `json:"job_id"`
+	SessionID string `json:"session_id,omitempty"`
+	Status    string `json:"status"`
+}
+
+// AgentStatusResponse is returned by GET /api/status.
+type AgentStatusResponse struct {
+	Status        string         `json:"status"`
+	ActiveJobs    int            `json:"active_jobs"`
+	TotalJobs     int            `json:"total_jobs"`
+	Threads       []ThreadStatus `json:"threads,omitempty"`
+	LastHeartbeat string         `json:"last_heartbeat,omitempty"`
+}
+
+// ThreadStatus represents a single agent thread.
+type ThreadStatus struct {
+	ID    string `json:"id"`
+	State string `json:"state"`
+	JobID string `json:"job_id,omitempty"`
+}
+
 // HealthResponse is returned by GET /api/health.
 type HealthResponse struct {
 	Status  string `json:"status"`
@@ -326,8 +355,6 @@ func (c *Client) ListTools(ctx context.Context) (*ToolsResponse, error) {
 }
 
 // StackStatus returns combined router and gateway health.
-// routerURL is the base URL of the llm-cluster-router (e.g., http://127.0.0.1:8080).
-// If routerURL is empty, the router section is omitted.
 func (c *Client) StackStatus(ctx context.Context, routerURL string) (*StackStatusResponse, error) {
 	result := &StackStatusResponse{}
 
@@ -364,6 +391,24 @@ func (c *Client) SpawnAgent(ctx context.Context, req SpawnAgentRequest) (*SpawnA
 		Status: accepted.Status,
 		Model:  req.Model,
 	}, nil
+}
+
+// SendTask sends a strategic task to IronClaw for background execution.
+func (c *Client) SendTask(ctx context.Context, req SendTaskRequest) (*SendTaskResponse, error) {
+	var resp SendTaskResponse
+	if err := c.post(ctx, "/api/chat/send", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// AgentStatus returns the current agent thread states and job counts.
+func (c *Client) AgentStatus(ctx context.Context) (*AgentStatusResponse, error) {
+	var resp AgentStatusResponse
+	if err := c.get(ctx, "/api/status", &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }
 
 // --- HTTP helpers -----------------------------------------------------------

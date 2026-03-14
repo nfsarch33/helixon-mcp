@@ -54,14 +54,38 @@ func (m *mockClient) SpawnAgent(ctx context.Context, req ironclaw.SpawnAgentRequ
 	args := m.Called(ctx, req)
 	return args.Get(0).(*ironclaw.SpawnAgentResponse), args.Error(1)
 }
+func (m *mockClient) SendTask(ctx context.Context, req ironclaw.SendTaskRequest) (*ironclaw.SendTaskResponse, error) {
+	args := m.Called(ctx, req)
+	return args.Get(0).(*ironclaw.SendTaskResponse), args.Error(1)
+}
+func (m *mockClient) AgentStatus(ctx context.Context) (*ironclaw.AgentStatusResponse, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(*ironclaw.AgentStatusResponse), args.Error(1)
+}
+
+type mockProm struct{ mock.Mock }
+
+func (m *mockProm) Query(ctx context.Context, query string) (string, error) {
+	args := m.Called(ctx, query)
+	return args.String(0), args.Error(1)
+}
 
 func TestNew_RegistersAllTools(t *testing.T) {
 	logger := zap.NewNop()
 	srv := New(new(mockClient), logger, "0.1.0")
 	count := srv.RegisteredToolCount()
 	// health + chat + list_jobs + get_job + cancel_job + search_memory +
-	// list_routines + delete_routine + list_tools + stack_status + spawn_agent + reviewed_push = 12
-	assert.Equal(t, 12, count)
+	// list_routines + delete_routine + list_tools + stack_status + spawn_agent +
+	// reviewed_push + send_task + agent_status = 14 (no prometheus = no get_metrics)
+	assert.Equal(t, 14, count)
+}
+
+func TestNewWithPrometheus_RegistersMetricsTool(t *testing.T) {
+	logger := zap.NewNop()
+	srv := NewWithPrometheus(new(mockClient), new(mockProm), logger, "0.1.0")
+	count := srv.RegisteredToolCount()
+	// 14 base + get_metrics = 15
+	assert.Equal(t, 15, count)
 }
 
 func TestRun_UnknownTransport(t *testing.T) {
