@@ -138,7 +138,7 @@ type ToolsResponse struct {
 
 // SendTaskRequest is the payload for POST /api/chat/send.
 type SendTaskRequest struct {
-	Message   string `json:"message"`
+	Message   string `json:"content"`
 	SessionID string `json:"session_id,omitempty"`
 }
 
@@ -403,12 +403,32 @@ func (c *Client) SendTask(ctx context.Context, req SendTaskRequest) (*SendTaskRe
 }
 
 // AgentStatus returns the current agent thread states and job counts.
+// Combines /api/health and /api/gateway/status since /api/status is not implemented.
 func (c *Client) AgentStatus(ctx context.Context) (*AgentStatusResponse, error) {
-	var resp AgentStatusResponse
-	if err := c.get(ctx, "/api/status", &resp); err != nil {
+	resp := &AgentStatusResponse{}
+
+	var health HealthResponse
+	if err := c.get(ctx, "/api/health", &health); err != nil {
 		return nil, err
 	}
-	return &resp, nil
+	resp.Status = health.Status
+
+	var gateway GatewayStatusResponse
+	if err := c.get(ctx, "/api/gateway/status", &gateway); err == nil {
+		resp.Status = gateway.Status
+	}
+
+	var jobs JobsResponse
+	if err := c.get(ctx, "/api/jobs", &jobs); err == nil {
+		for _, j := range jobs.Jobs {
+			if j.State == "running" || j.State == "in_progress" {
+				resp.ActiveJobs++
+			}
+		}
+		resp.TotalJobs = len(jobs.Jobs)
+	}
+
+	return resp, nil
 }
 
 // --- HTTP helpers -----------------------------------------------------------
