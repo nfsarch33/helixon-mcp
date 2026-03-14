@@ -21,6 +21,13 @@ type IronclawClient interface {
 	CreateRoutine(ctx context.Context, req ironclaw.CreateRoutineRequest) (*ironclaw.Routine, error)
 	DeleteRoutine(ctx context.Context, routineID string) error
 	ListTools(ctx context.Context) (*ironclaw.ToolsResponse, error)
+	SendTask(ctx context.Context, req ironclaw.SendTaskRequest) (*ironclaw.SendTaskResponse, error)
+	AgentStatus(ctx context.Context) (*ironclaw.AgentStatusResponse, error)
+}
+
+// PrometheusQuerier queries Prometheus for metrics.
+type PrometheusQuerier interface {
+	Query(ctx context.Context, query string) (string, error)
 }
 
 // requiredString extracts a required string argument from a tool call request.

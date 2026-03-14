@@ -80,8 +80,8 @@ type MemorySearchRequest struct {
 
 // MemoryEntry is a single memory/workspace entry.
 type MemoryEntry struct {
-	Path    string `json:"path"`
-	Content string `json:"content"`
+	Path    string  `json:"path"`
+	Content string  `json:"content"`
 	Score   float64 `json:"score,omitempty"`
 }
 
@@ -121,6 +121,35 @@ type ToolInfo struct {
 // ToolsResponse is returned by GET /api/tools.
 type ToolsResponse struct {
 	Tools []ToolInfo `json:"tools"`
+}
+
+// SendTaskRequest is the payload for POST /api/chat/send.
+type SendTaskRequest struct {
+	Message   string `json:"message"`
+	SessionID string `json:"session_id,omitempty"`
+}
+
+// SendTaskResponse is returned by POST /api/chat/send.
+type SendTaskResponse struct {
+	JobID     string `json:"job_id"`
+	SessionID string `json:"session_id,omitempty"`
+	Status    string `json:"status"`
+}
+
+// AgentStatusResponse is returned by GET /api/status.
+type AgentStatusResponse struct {
+	Status        string         `json:"status"`
+	ActiveJobs    int            `json:"active_jobs"`
+	TotalJobs     int            `json:"total_jobs"`
+	Threads       []ThreadStatus `json:"threads,omitempty"`
+	LastHeartbeat string         `json:"last_heartbeat,omitempty"`
+}
+
+// ThreadStatus represents a single agent thread.
+type ThreadStatus struct {
+	ID    string `json:"id"`
+	State string `json:"state"`
+	JobID string `json:"job_id,omitempty"`
 }
 
 // HealthResponse is returned by GET /health.
@@ -208,6 +237,24 @@ func (c *Client) DeleteRoutine(ctx context.Context, routineID string) error {
 func (c *Client) ListTools(ctx context.Context) (*ToolsResponse, error) {
 	var resp ToolsResponse
 	if err := c.get(ctx, "/api/tools", &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// SendTask sends a strategic task to IronClaw for background execution.
+func (c *Client) SendTask(ctx context.Context, req SendTaskRequest) (*SendTaskResponse, error) {
+	var resp SendTaskResponse
+	if err := c.post(ctx, "/api/chat/send", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// AgentStatus returns the current agent thread states and job counts.
+func (c *Client) AgentStatus(ctx context.Context) (*AgentStatusResponse, error) {
+	var resp AgentStatusResponse
+	if err := c.get(ctx, "/api/status", &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

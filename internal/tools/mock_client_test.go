@@ -61,3 +61,23 @@ func (m *MockIronclawClient) ListTools(ctx context.Context) (*ironclaw.ToolsResp
 	args := m.Called(ctx)
 	return args.Get(0).(*ironclaw.ToolsResponse), args.Error(1)
 }
+
+func (m *MockIronclawClient) SendTask(ctx context.Context, req ironclaw.SendTaskRequest) (*ironclaw.SendTaskResponse, error) {
+	args := m.Called(ctx, req)
+	return args.Get(0).(*ironclaw.SendTaskResponse), args.Error(1)
+}
+
+func (m *MockIronclawClient) AgentStatus(ctx context.Context) (*ironclaw.AgentStatusResponse, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(*ironclaw.AgentStatusResponse), args.Error(1)
+}
+
+// MockPrometheusQuerier is a testify mock for PrometheusQuerier.
+type MockPrometheusQuerier struct {
+	mock.Mock
+}
+
+func (m *MockPrometheusQuerier) Query(ctx context.Context, query string) (string, error) {
+	args := m.Called(ctx, query)
+	return args.String(0), args.Error(1)
+}

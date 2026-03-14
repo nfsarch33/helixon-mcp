@@ -28,6 +28,10 @@ type Config struct {
 
 	// LogLevel controls verbosity: debug, info, warn, error.
 	LogLevel string
+
+	// PrometheusURL is the optional base URL for Prometheus metric queries.
+	// If empty, the ironclaw_get_metrics tool is not registered.
+	PrometheusURL string
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -38,6 +42,7 @@ func Load() (*Config, error) {
 		Transport:       envOrDefault("MCP_TRANSPORT", "stdio"),
 		SSEAddr:         envOrDefault("MCP_SSE_ADDR", ":8080"),
 		LogLevel:        envOrDefault("LOG_LEVEL", "info"),
+		PrometheusURL:   os.Getenv("PROMETHEUS_URL"),
 	}
 
 	timeoutSec := envOrDefault("IRONCLAW_TIMEOUT_SECONDS", "30")

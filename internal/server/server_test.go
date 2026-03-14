@@ -13,34 +13,57 @@ import (
 type mockClient struct{ mock.Mock }
 
 func (m *mockClient) Health(ctx context.Context) (*ironclaw.HealthResponse, error) {
-	args := m.Called(ctx); return args.Get(0).(*ironclaw.HealthResponse), args.Error(1)
+	args := m.Called(ctx)
+	return args.Get(0).(*ironclaw.HealthResponse), args.Error(1)
 }
 func (m *mockClient) Chat(ctx context.Context, req ironclaw.ChatRequest) (*ironclaw.ChatResponse, error) {
-	args := m.Called(ctx, req); return args.Get(0).(*ironclaw.ChatResponse), args.Error(1)
+	args := m.Called(ctx, req)
+	return args.Get(0).(*ironclaw.ChatResponse), args.Error(1)
 }
 func (m *mockClient) ListJobs(ctx context.Context) (*ironclaw.JobsResponse, error) {
-	args := m.Called(ctx); return args.Get(0).(*ironclaw.JobsResponse), args.Error(1)
+	args := m.Called(ctx)
+	return args.Get(0).(*ironclaw.JobsResponse), args.Error(1)
 }
 func (m *mockClient) GetJob(ctx context.Context, id string) (*ironclaw.Job, error) {
-	args := m.Called(ctx, id); return args.Get(0).(*ironclaw.Job), args.Error(1)
+	args := m.Called(ctx, id)
+	return args.Get(0).(*ironclaw.Job), args.Error(1)
 }
 func (m *mockClient) CancelJob(ctx context.Context, id string) error {
 	return m.Called(ctx, id).Error(0)
 }
 func (m *mockClient) SearchMemory(ctx context.Context, req ironclaw.MemorySearchRequest) (*ironclaw.MemorySearchResponse, error) {
-	args := m.Called(ctx, req); return args.Get(0).(*ironclaw.MemorySearchResponse), args.Error(1)
+	args := m.Called(ctx, req)
+	return args.Get(0).(*ironclaw.MemorySearchResponse), args.Error(1)
 }
 func (m *mockClient) ListRoutines(ctx context.Context) (*ironclaw.RoutinesResponse, error) {
-	args := m.Called(ctx); return args.Get(0).(*ironclaw.RoutinesResponse), args.Error(1)
+	args := m.Called(ctx)
+	return args.Get(0).(*ironclaw.RoutinesResponse), args.Error(1)
 }
 func (m *mockClient) CreateRoutine(ctx context.Context, req ironclaw.CreateRoutineRequest) (*ironclaw.Routine, error) {
-	args := m.Called(ctx, req); return args.Get(0).(*ironclaw.Routine), args.Error(1)
+	args := m.Called(ctx, req)
+	return args.Get(0).(*ironclaw.Routine), args.Error(1)
 }
 func (m *mockClient) DeleteRoutine(ctx context.Context, id string) error {
 	return m.Called(ctx, id).Error(0)
 }
 func (m *mockClient) ListTools(ctx context.Context) (*ironclaw.ToolsResponse, error) {
-	args := m.Called(ctx); return args.Get(0).(*ironclaw.ToolsResponse), args.Error(1)
+	args := m.Called(ctx)
+	return args.Get(0).(*ironclaw.ToolsResponse), args.Error(1)
+}
+func (m *mockClient) SendTask(ctx context.Context, req ironclaw.SendTaskRequest) (*ironclaw.SendTaskResponse, error) {
+	args := m.Called(ctx, req)
+	return args.Get(0).(*ironclaw.SendTaskResponse), args.Error(1)
+}
+func (m *mockClient) AgentStatus(ctx context.Context) (*ironclaw.AgentStatusResponse, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(*ironclaw.AgentStatusResponse), args.Error(1)
+}
+
+type mockProm struct{ mock.Mock }
+
+func (m *mockProm) Query(ctx context.Context, query string) (string, error) {
+	args := m.Called(ctx, query)
+	return args.String(0), args.Error(1)
 }
 
 func TestNew_RegistersAllTools(t *testing.T) {
@@ -48,8 +71,17 @@ func TestNew_RegistersAllTools(t *testing.T) {
 	srv := New(new(mockClient), logger, "0.1.0")
 	count := srv.RegisteredToolCount()
 	// health + chat + list_jobs + get_job + cancel_job + search_memory +
-	// list_routines + create_routine + delete_routine + list_tools = 10
-	assert.Equal(t, 10, count)
+	// list_routines + create_routine + delete_routine + list_tools +
+	// send_task + agent_status = 12 (no prometheus = no get_metrics)
+	assert.Equal(t, 12, count)
+}
+
+func TestNewWithPrometheus_RegistersMetricsTool(t *testing.T) {
+	logger := zap.NewNop()
+	srv := NewWithPrometheus(new(mockClient), new(mockProm), logger, "0.1.0")
+	count := srv.RegisteredToolCount()
+	// 12 base + get_metrics = 13
+	assert.Equal(t, 13, count)
 }
 
 func TestRun_UnknownTransport(t *testing.T) {
