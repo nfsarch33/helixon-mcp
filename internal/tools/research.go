@@ -24,7 +24,7 @@ func NewResearchHandler() *ResearchHandler {
 func (h *ResearchHandler) ScrapeTool() mcp.Tool {
 	return mcp.NewTool(
 		"ironclaw_research_scrape",
-		mcp.WithDescription("Scrape a web page using Colly (static HTML) or chromedp (dynamic JS). Returns title, content, links, and extracted fields."),
+		mcp.WithDescription("Scrape a web page using Colly (static HTML) or chromedp (dynamic JS). Returns title, content, links, and extracted fields. Optionally extracts article content and converts to clean markdown."),
 		mcp.WithString("url",
 			mcp.Required(),
 			mcp.Description("URL to scrape."),
@@ -40,6 +40,15 @@ func (h *ResearchHandler) ScrapeTool() mcp.Tool {
 		),
 		mcp.WithString("retries",
 			mcp.Description("Number of retry attempts on failure. Default: '1'."),
+		),
+		mcp.WithString("extract",
+			mcp.Description("Set to 'true' to extract article content, strip noise (ads/nav), and convert to markdown. Default: false."),
+		),
+		mcp.WithString("max_tokens",
+			mcp.Description("Max token budget for extracted content. Only used when extract=true. '0' = unlimited. Example: '4000'."),
+		),
+		mcp.WithString("format",
+			mcp.Description("Output format: 'json' (default), 'markdown', or 'text'."),
 		),
 	)
 }
@@ -64,6 +73,15 @@ func (h *ResearchHandler) HandleScrape(ctx context.Context, req mcp.CallToolRequ
 	}
 	if retries := optionalString(req, "retries"); retries != "" {
 		args = append(args, "--retries", retries)
+	}
+	if optionalBool(req, "extract") {
+		args = append(args, "--extract")
+	}
+	if mt := optionalString(req, "max_tokens"); mt != "" {
+		args = append(args, "--max-tokens", mt)
+	}
+	if f := optionalString(req, "format"); f != "" {
+		args = append(args, "--format", f)
 	}
 
 	out, err := h.run(ctx, "", "", h.bin, args...)
@@ -246,4 +264,122 @@ func (h *ResearchHandler) HandlePipeline(ctx context.Context, req mcp.CallToolRe
 	}
 	b, _ := json.MarshalIndent(result, "", "  ")
 	return mcp.NewToolResultText(string(b)), nil
+}
+
+// TranscriptTool returns the MCP tool for media download and transcription.
+func (h *ResearchHandler) TranscriptTool() mcp.Tool {
+	return mcp.NewTool(
+		"ironclaw_research_transcript",
+		mcp.WithDescription("Download media from a URL (YouTube, podcast, lecture), transcribe audio using faster-whisper, and optionally summarize. Returns structured transcript with timestamps."),
+		mcp.WithString("url",
+			mcp.Required(),
+			mcp.Description("Media URL to download and transcribe (YouTube, podcast RSS, direct media link)."),
+		),
+		mcp.WithString("language",
+			mcp.Description("Transcription language code. Default: 'en'."),
+		),
+		mcp.WithString("model",
+			mcp.Description("Whisper model size: tiny, base, small, medium, large. Default: 'base'."),
+		),
+		mcp.WithString("summarize",
+			mcp.Description("Set to 'true' to generate a summary after transcription. Default: false."),
+		),
+		mcp.WithString("audio_only",
+			mcp.Description("Set to 'false' to download video as well. Default: true (audio only)."),
+		),
+		mcp.WithString("format",
+			mcp.Description("Output format: 'json' (default), 'markdown', or 'text'."),
+		),
+	)
+}
+
+// HandleTranscript executes media download and transcription via the research-agent CLI.
+func (h *ResearchHandler) HandleTranscript(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	url, err := requiredString(req, "url")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	args := []string{"transcript", url}
+
+	if lang := optionalString(req, "language"); lang != "" {
+		args = append(args, "--language", lang)
+	}
+	if model := optionalString(req, "model"); model != "" {
+		args = append(args, "--model", model)
+	}
+	if optionalBool(req, "summarize") {
+		args = append(args, "--summarize")
+	}
+	if ao := optionalString(req, "audio_only"); ao == "false" {
+		args = append(args, "--audio-only=false")
+	}
+	if f := optionalString(req, "format"); f != "" {
+		args = append(args, "--format", f)
+	}
+
+	out, err := h.run(ctx, "", "", h.bin, args...)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("transcript failed: %v", err)), nil
+	}
+	return mcp.NewToolResultText(out), nil
+}
+
+// ExtractTool returns the MCP tool for content extraction and cleaning.
+func (h *ResearchHandler) ExtractTool() mcp.Tool {
+	return mcp.NewTool(
+		"ironclaw_research_extract",
+		mcp.WithDescription("Extract article content from a URL or HTML file. Strips noise (ads, navigation, banners), converts to clean markdown, and optionally compresses to a token budget."),
+		mcp.WithString("url",
+			mcp.Required(),
+			mcp.Description("URL or local HTML file path to extract content from."),
+		),
+		mcp.WithString("max_tokens",
+			mcp.Description("Max token budget for output. '0' = unlimited. Example: '4000'."),
+		),
+		mcp.WithString("compress",
+			mcp.Description("Compression level: 'none', 'light', 'medium' (default), 'aggressive'."),
+		),
+		mcp.WithString("keep_links",
+			mcp.Description("Preserve links in markdown output. Default: 'true'."),
+		),
+		mcp.WithString("keep_images",
+			mcp.Description("Preserve images in markdown output. Default: 'false'."),
+		),
+		mcp.WithString("format",
+			mcp.Description("Output format: 'json' (default), 'markdown', or 'text'."),
+		),
+	)
+}
+
+// HandleExtract executes content extraction via the research-agent CLI.
+func (h *ResearchHandler) HandleExtract(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	url, err := requiredString(req, "url")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	args := []string{"extract", url}
+
+	if mt := optionalString(req, "max_tokens"); mt != "" {
+		args = append(args, "--max-tokens", mt)
+	}
+	if c := optionalString(req, "compress"); c != "" {
+		args = append(args, "--compress", c)
+	}
+	if kl := optionalString(req, "keep_links"); kl == "false" {
+		args = append(args, "--keep-links=false")
+	}
+	if ki := optionalString(req, "keep_images"); ki == "true" {
+		args = append(args, "--keep-images")
+	}
+	if f := optionalString(req, "format"); f != "" {
+		args = append(args, "--format", f)
+	}
+
+	out, err := h.run(ctx, "", "", h.bin, args...)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("extract failed: %v", err)), nil
+	}
+	return mcp.NewToolResultText(out), nil
 }

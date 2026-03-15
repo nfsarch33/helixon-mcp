@@ -228,3 +228,175 @@ func TestResearchHandler_HandlePipeline_Error(t *testing.T) {
 	assert.True(t, result.IsError)
 	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "pipeline stage failed")
 }
+
+// --- Transcript tool tests ---
+
+func TestResearchHandler_TranscriptTool_Definition(t *testing.T) {
+	h := NewResearchHandler()
+	tool := h.TranscriptTool()
+	assert.Equal(t, "ironclaw_research_transcript", tool.Name)
+	assert.Contains(t, tool.Description, "transcribe")
+}
+
+func TestResearchHandler_HandleTranscript_Success(t *testing.T) {
+	h := &ResearchHandler{
+		run: fakeRunner(`{"download":{"title":"Test Video"},"transcript":{"full_text":"Hello world"}}`, nil),
+		bin: "research-agent",
+	}
+
+	result, err := h.HandleTranscript(context.Background(), callTool(t, map[string]any{
+		"url": "https://youtube.com/watch?v=test",
+	}))
+	require.NoError(t, err)
+	assert.False(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "Hello world")
+}
+
+func TestResearchHandler_HandleTranscript_WithOptions(t *testing.T) {
+	var capturedArgs []string
+	h := &ResearchHandler{
+		run: func(_ context.Context, _, _ string, _ string, args ...string) (string, error) {
+			capturedArgs = args
+			return "{}", nil
+		},
+		bin: "research-agent",
+	}
+
+	_, err := h.HandleTranscript(context.Background(), callTool(t, map[string]any{
+		"url":        "https://example.com/video",
+		"language":   "zh",
+		"model":      "large",
+		"summarize":  "true",
+		"audio_only": "false",
+		"format":     "markdown",
+	}))
+	require.NoError(t, err)
+	assert.Contains(t, capturedArgs, "--language")
+	assert.Contains(t, capturedArgs, "zh")
+	assert.Contains(t, capturedArgs, "--model")
+	assert.Contains(t, capturedArgs, "large")
+	assert.Contains(t, capturedArgs, "--summarize")
+	assert.Contains(t, capturedArgs, "--audio-only=false")
+	assert.Contains(t, capturedArgs, "--format")
+	assert.Contains(t, capturedArgs, "markdown")
+}
+
+func TestResearchHandler_HandleTranscript_MissingURL(t *testing.T) {
+	h := NewResearchHandler()
+	result, err := h.HandleTranscript(context.Background(), callTool(t, map[string]any{}))
+	require.NoError(t, err)
+	assert.True(t, result.IsError)
+}
+
+func TestResearchHandler_HandleTranscript_Error(t *testing.T) {
+	h := &ResearchHandler{
+		run: fakeRunner("", fmt.Errorf("yt-dlp not found")),
+		bin: "research-agent",
+	}
+
+	result, err := h.HandleTranscript(context.Background(), callTool(t, map[string]any{
+		"url": "https://example.com",
+	}))
+	require.NoError(t, err)
+	assert.True(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "yt-dlp not found")
+}
+
+// --- Extract tool tests ---
+
+func TestResearchHandler_ExtractTool_Definition(t *testing.T) {
+	h := NewResearchHandler()
+	tool := h.ExtractTool()
+	assert.Equal(t, "ironclaw_research_extract", tool.Name)
+	assert.Contains(t, tool.Description, "Extract")
+}
+
+func TestResearchHandler_HandleExtract_Success(t *testing.T) {
+	h := &ResearchHandler{
+		run: fakeRunner(`{"markdown":"# Article\n\nContent here","tokens_saved":500}`, nil),
+		bin: "research-agent",
+	}
+
+	result, err := h.HandleExtract(context.Background(), callTool(t, map[string]any{
+		"url": "https://example.com/article",
+	}))
+	require.NoError(t, err)
+	assert.False(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "Article")
+}
+
+func TestResearchHandler_HandleExtract_WithOptions(t *testing.T) {
+	var capturedArgs []string
+	h := &ResearchHandler{
+		run: func(_ context.Context, _, _ string, _ string, args ...string) (string, error) {
+			capturedArgs = args
+			return "{}", nil
+		},
+		bin: "research-agent",
+	}
+
+	_, err := h.HandleExtract(context.Background(), callTool(t, map[string]any{
+		"url":         "https://example.com",
+		"max_tokens":  "4000",
+		"compress":    "aggressive",
+		"keep_links":  "false",
+		"keep_images": "true",
+		"format":      "text",
+	}))
+	require.NoError(t, err)
+	assert.Contains(t, capturedArgs, "--max-tokens")
+	assert.Contains(t, capturedArgs, "4000")
+	assert.Contains(t, capturedArgs, "--compress")
+	assert.Contains(t, capturedArgs, "aggressive")
+	assert.Contains(t, capturedArgs, "--keep-links=false")
+	assert.Contains(t, capturedArgs, "--keep-images")
+	assert.Contains(t, capturedArgs, "--format")
+	assert.Contains(t, capturedArgs, "text")
+}
+
+func TestResearchHandler_HandleExtract_MissingURL(t *testing.T) {
+	h := NewResearchHandler()
+	result, err := h.HandleExtract(context.Background(), callTool(t, map[string]any{}))
+	require.NoError(t, err)
+	assert.True(t, result.IsError)
+}
+
+func TestResearchHandler_HandleExtract_Error(t *testing.T) {
+	h := &ResearchHandler{
+		run: fakeRunner("", fmt.Errorf("extraction failed")),
+		bin: "research-agent",
+	}
+
+	result, err := h.HandleExtract(context.Background(), callTool(t, map[string]any{
+		"url": "https://example.com",
+	}))
+	require.NoError(t, err)
+	assert.True(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "extraction failed")
+}
+
+// --- Scrape with extract/max_tokens tests ---
+
+func TestResearchHandler_HandleScrape_WithExtractOptions(t *testing.T) {
+	var capturedArgs []string
+	h := &ResearchHandler{
+		run: func(_ context.Context, _, _ string, _ string, args ...string) (string, error) {
+			capturedArgs = args
+			return "{}", nil
+		},
+		bin: "research-agent",
+	}
+
+	_, err := h.HandleScrape(context.Background(), callTool(t, map[string]any{
+		"url":        "https://example.com",
+		"extract":    "true",
+		"max_tokens": "2000",
+		"format":     "markdown",
+	}))
+	require.NoError(t, err)
+	assert.Contains(t, capturedArgs, "--extract")
+	assert.Contains(t, capturedArgs, "--max-tokens")
+	assert.Contains(t, capturedArgs, "2000")
+	assert.Contains(t, capturedArgs, "--format")
+	assert.Contains(t, capturedArgs, "markdown")
+}

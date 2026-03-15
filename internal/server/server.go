@@ -91,6 +91,8 @@ func (s *Server) buildMCPServer() *mcpserver.MCPServer {
 	addTool(research.SearchTool(), research.HandleSearch)
 	addTool(research.StoreTool(), research.HandleStore)
 	addTool(research.PipelineTool(), research.HandlePipeline)
+	addTool(research.TranscriptTool(), research.HandleTranscript)
+	addTool(research.ExtractTool(), research.HandleExtract)
 
 	if s.prom != nil {
 		getMetrics := tools.NewGetMetricsHandler(s.prom)
