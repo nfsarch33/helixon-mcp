@@ -400,3 +400,128 @@ func TestResearchHandler_HandleScrape_WithExtractOptions(t *testing.T) {
 	assert.Contains(t, capturedArgs, "--format")
 	assert.Contains(t, capturedArgs, "markdown")
 }
+
+// --- Crawl tool tests ---
+
+func TestResearchHandler_CrawlTool_Definition(t *testing.T) {
+	h := NewResearchHandler()
+	tool := h.CrawlTool()
+	assert.Equal(t, "ironclaw_research_crawl", tool.Name)
+	assert.Contains(t, tool.Description, "Crawl")
+	assert.Contains(t, tool.Description, "BFS")
+}
+
+func TestResearchHandler_HandleCrawl_Success(t *testing.T) {
+	h := &ResearchHandler{
+		run: fakeRunner(`{"total_pages":5,"pages":[{"url":"https://example.com","title":"Home"}]}`, nil),
+		bin: "research-agent",
+	}
+
+	result, err := h.HandleCrawl(context.Background(), callTool(t, map[string]any{
+		"url": "https://example.com",
+	}))
+	require.NoError(t, err)
+	assert.False(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "total_pages")
+}
+
+func TestResearchHandler_HandleCrawl_MissingURL(t *testing.T) {
+	h := NewResearchHandler()
+	result, err := h.HandleCrawl(context.Background(), callTool(t, map[string]any{}))
+	require.NoError(t, err)
+	assert.True(t, result.IsError)
+}
+
+func TestResearchHandler_HandleCrawl_WithAllOptions(t *testing.T) {
+	var capturedArgs []string
+	h := &ResearchHandler{
+		run: func(_ context.Context, _, _ string, _ string, args ...string) (string, error) {
+			capturedArgs = args
+			return "{}", nil
+		},
+		bin: "research-agent",
+	}
+
+	_, err := h.HandleCrawl(context.Background(), callTool(t, map[string]any{
+		"url":              "https://lms.example.edu/d2l/le/content/12345/Home",
+		"depth":            "4",
+		"max_pages":        "100",
+		"domain":           "lms.example.edu, cdn.example.edu",
+		"url_filter":       "/d2l/le/content/",
+		"url_exclude":      "\\.(css|js)$",
+		"dynamic":          "true",
+		"extract":          "true",
+		"max_tokens":       "4000",
+		"page_delay":       "3s",
+		"chrome_debug_url": "ws://localhost:9222",
+		"cookie_file":      "/tmp/cookies.json",
+		"format":           "markdown",
+		"output":           "/tmp/crawl-output.md",
+	}))
+	require.NoError(t, err)
+
+	assert.Contains(t, capturedArgs, "crawl")
+	assert.Contains(t, capturedArgs, "https://lms.example.edu/d2l/le/content/12345/Home")
+	assert.Contains(t, capturedArgs, "--depth")
+	assert.Contains(t, capturedArgs, "4")
+	assert.Contains(t, capturedArgs, "--max-pages")
+	assert.Contains(t, capturedArgs, "100")
+	assert.Contains(t, capturedArgs, "--domain")
+	assert.Contains(t, capturedArgs, "lms.example.edu")
+	assert.Contains(t, capturedArgs, "cdn.example.edu")
+	assert.Contains(t, capturedArgs, "--url-filter")
+	assert.Contains(t, capturedArgs, "/d2l/le/content/")
+	assert.Contains(t, capturedArgs, "--url-exclude")
+	assert.Contains(t, capturedArgs, "--dynamic")
+	assert.Contains(t, capturedArgs, "--extract")
+	assert.Contains(t, capturedArgs, "--max-tokens")
+	assert.Contains(t, capturedArgs, "4000")
+	assert.Contains(t, capturedArgs, "--page-delay")
+	assert.Contains(t, capturedArgs, "3s")
+	assert.Contains(t, capturedArgs, "--chrome-debug-url")
+	assert.Contains(t, capturedArgs, "ws://localhost:9222")
+	assert.Contains(t, capturedArgs, "--cookie-file")
+	assert.Contains(t, capturedArgs, "/tmp/cookies.json")
+	assert.Contains(t, capturedArgs, "--format")
+	assert.Contains(t, capturedArgs, "markdown")
+	assert.Contains(t, capturedArgs, "--output")
+	assert.Contains(t, capturedArgs, "/tmp/crawl-output.md")
+}
+
+func TestResearchHandler_HandleCrawl_Error(t *testing.T) {
+	h := &ResearchHandler{
+		run: fakeRunner("", fmt.Errorf("crawl timed out")),
+		bin: "research-agent",
+	}
+
+	result, err := h.HandleCrawl(context.Background(), callTool(t, map[string]any{
+		"url": "https://example.com",
+	}))
+	require.NoError(t, err)
+	assert.True(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "crawl timed out")
+}
+
+func TestResearchHandler_HandleCrawl_MinimalOptions(t *testing.T) {
+	var capturedArgs []string
+	h := &ResearchHandler{
+		run: func(_ context.Context, _, _ string, _ string, args ...string) (string, error) {
+			capturedArgs = args
+			return "{}", nil
+		},
+		bin: "research-agent",
+	}
+
+	_, err := h.HandleCrawl(context.Background(), callTool(t, map[string]any{
+		"url":   "https://example.com",
+		"depth": "2",
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, "crawl", capturedArgs[0])
+	assert.Equal(t, "https://example.com", capturedArgs[1])
+	assert.Contains(t, capturedArgs, "--depth")
+	assert.Contains(t, capturedArgs, "2")
+	assert.NotContains(t, capturedArgs, "--dynamic")
+	assert.NotContains(t, capturedArgs, "--extract")
+	assert.NotContains(t, capturedArgs, "--chrome-debug-url")
+}

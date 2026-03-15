@@ -80,36 +80,36 @@ func TestNew_RegistersBaseTools(t *testing.T) {
 	logger := zap.NewNop()
 	srv := New(new(mockClient), nil, nil, logger, "0.1.0")
 	count := srv.RegisteredToolCount()
-	// health + chat + list_jobs + get_job + cancel_job + search_memory +
-	// list_routines + delete_routine + list_tools + stack_status + spawn_agent +
-	// reviewed_push + send_task + agent_status +
-	// research_scrape + research_pdf + research_search + research_store + research_pipeline
-	// = 19 (no prometheus = no get_metrics)
-	assert.Equal(t, 19, count)
+	// 14 core (health, chat, list_jobs, get_job, cancel_job, search_memory,
+	// list_routines, delete_routine, list_tools, stack_status, spawn_agent,
+	// reviewed_push, send_task, agent_status) +
+	// 8 research (scrape, pdf, search, store, pipeline, transcript, extract, crawl)
+	// = 22 (no prometheus = no get_metrics)
+	assert.Equal(t, 22, count)
 }
 
 func TestNew_WithPrometheus_RegistersMetricsTool(t *testing.T) {
 	logger := zap.NewNop()
 	srv := New(new(mockClient), new(mockProm), nil, logger, "0.1.0")
 	count := srv.RegisteredToolCount()
-	// 19 base + get_metrics = 20
-	assert.Equal(t, 20, count)
+	// 22 base + get_metrics = 23
+	assert.Equal(t, 23, count)
 }
 
 func TestNew_WithCLI_RegistersCEOTools(t *testing.T) {
 	logger := zap.NewNop()
 	srv := New(new(mockClient), nil, &mockCLI{}, logger, "0.1.0")
 	count := srv.RegisteredToolCount()
-	// 19 base + 6 CEO tools = 25
-	assert.Equal(t, 25, count)
+	// 22 base + 6 CEO tools = 28
+	assert.Equal(t, 28, count)
 }
 
 func TestNew_WithAll_RegistersAllTools(t *testing.T) {
 	logger := zap.NewNop()
 	srv := New(new(mockClient), new(mockProm), &mockCLI{}, logger, "0.1.0")
 	count := srv.RegisteredToolCount()
-	// 19 base + get_metrics + 6 CEO tools = 26
-	assert.Equal(t, 26, count)
+	// 22 base + get_metrics + 6 CEO tools = 29
+	assert.Equal(t, 29, count)
 }
 
 func TestRun_UnknownTransport(t *testing.T) {

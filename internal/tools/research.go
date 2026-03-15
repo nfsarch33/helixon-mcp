@@ -383,3 +383,115 @@ func (h *ResearchHandler) HandleExtract(ctx context.Context, req mcp.CallToolReq
 	}
 	return mcp.NewToolResultText(out), nil
 }
+
+// CrawlTool returns the MCP tool for multi-page web crawling.
+func (h *ResearchHandler) CrawlTool() mcp.Tool {
+	return mcp.NewTool(
+		"ironclaw_research_crawl",
+		mcp.WithDescription("Crawl multiple pages starting from a URL using BFS traversal. Supports domain scoping, depth/page limits, URL filtering, authenticated sessions, and content extraction. Ideal for LMS course capture and multi-page research."),
+		mcp.WithString("url",
+			mcp.Required(),
+			mcp.Description("Starting URL for the crawl."),
+		),
+		mcp.WithString("depth",
+			mcp.Description("Maximum link-following depth. Default: '3'."),
+		),
+		mcp.WithString("max_pages",
+			mcp.Description("Maximum number of pages to crawl. Default: '50'."),
+		),
+		mcp.WithString("domain",
+			mcp.Description("Comma-separated allowed domains for link following. Default: same as start URL."),
+		),
+		mcp.WithString("url_filter",
+			mcp.Description("Regex pattern — only crawl URLs matching this pattern."),
+		),
+		mcp.WithString("url_exclude",
+			mcp.Description("Regex pattern — skip URLs matching this pattern."),
+		),
+		mcp.WithString("dynamic",
+			mcp.Description("Set to 'true' to use chromedp for JS-rendered pages. Default: false."),
+		),
+		mcp.WithString("extract",
+			mcp.Description("Set to 'true' to extract article content from each page. Default: false."),
+		),
+		mcp.WithString("max_tokens",
+			mcp.Description("Max token budget per extracted page. Only used when extract=true. Example: '4000'."),
+		),
+		mcp.WithString("page_delay",
+			mcp.Description("Delay between page fetches. Example: '2s'. Default: '1s'."),
+		),
+		mcp.WithString("chrome_debug_url",
+			mcp.Description("WebSocket URL for Chrome DevTools (e.g. ws://localhost:9222) for authenticated sessions."),
+		),
+		mcp.WithString("cookie_file",
+			mcp.Description("Path to JSON cookie jar for authenticated sessions."),
+		),
+		mcp.WithString("format",
+			mcp.Description("Output format: 'json' (default) or 'markdown'."),
+		),
+		mcp.WithString("output",
+			mcp.Description("File path to write output. If omitted, returns to stdout."),
+		),
+	)
+}
+
+// HandleCrawl executes a multi-page crawl via the research-agent CLI.
+func (h *ResearchHandler) HandleCrawl(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	url, err := requiredString(req, "url")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	args := []string{"crawl", url}
+
+	if d := optionalString(req, "depth"); d != "" {
+		args = append(args, "--depth", d)
+	}
+	if mp := optionalString(req, "max_pages"); mp != "" {
+		args = append(args, "--max-pages", mp)
+	}
+	if dom := optionalString(req, "domain"); dom != "" {
+		for _, d := range strings.Split(dom, ",") {
+			d = strings.TrimSpace(d)
+			if d != "" {
+				args = append(args, "--domain", d)
+			}
+		}
+	}
+	if uf := optionalString(req, "url_filter"); uf != "" {
+		args = append(args, "--url-filter", uf)
+	}
+	if ue := optionalString(req, "url_exclude"); ue != "" {
+		args = append(args, "--url-exclude", ue)
+	}
+	if optionalBool(req, "dynamic") {
+		args = append(args, "--dynamic")
+	}
+	if optionalBool(req, "extract") {
+		args = append(args, "--extract")
+	}
+	if mt := optionalString(req, "max_tokens"); mt != "" {
+		args = append(args, "--max-tokens", mt)
+	}
+	if pd := optionalString(req, "page_delay"); pd != "" {
+		args = append(args, "--page-delay", pd)
+	}
+	if cdu := optionalString(req, "chrome_debug_url"); cdu != "" {
+		args = append(args, "--chrome-debug-url", cdu)
+	}
+	if cf := optionalString(req, "cookie_file"); cf != "" {
+		args = append(args, "--cookie-file", cf)
+	}
+	if f := optionalString(req, "format"); f != "" {
+		args = append(args, "--format", f)
+	}
+	if o := optionalString(req, "output"); o != "" {
+		args = append(args, "--output", o)
+	}
+
+	out, err := h.run(ctx, "", "", h.bin, args...)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("crawl failed: %v", err)), nil
+	}
+	return mcp.NewToolResultText(out), nil
+}
