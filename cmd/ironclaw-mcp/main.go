@@ -51,7 +51,12 @@ func run() error {
 		logger.Info("prometheus enabled", zap.String("url", cfg.PrometheusURL))
 	}
 
-	srv := server.NewWithPrometheus(client, prom, logger, version)
+	var cli tools.CLIRunner
+	if bin := config.MCCLIPath(); bin != "" {
+		cli = tools.NewExecCLIRunner(bin)
+	}
+
+	srv := server.New(client, prom, cli, logger, version)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()

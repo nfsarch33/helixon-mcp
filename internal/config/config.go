@@ -45,6 +45,12 @@ type Config struct {
 	PrometheusURL string
 }
 
+// MCCLIPath returns the path to mc-cli for CEO tools (crm_brief, morning_brief, etc.).
+// Default "mc-cli" (from PATH). Set MCCLI_PATH to empty to disable CEO tools.
+func MCCLIPath() string {
+	return envOrDefault("MCCLI_PATH", "mc-cli")
+}
+
 // Load reads configuration from environment variables with sensible defaults.
 func Load() (*Config, error) {
 	cfg := &Config{
