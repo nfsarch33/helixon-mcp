@@ -14,6 +14,7 @@ import (
 // Server wraps the MCP server and its dependencies.
 type Server struct {
 	client    tools.IronclawClient
+	cli       tools.CLIRunner
 	logger    *zap.Logger
 	version   string
 	mcp       *server.MCPServer
@@ -21,10 +22,12 @@ type Server struct {
 }
 
 // New creates and configures a new MCP Server with all IronClaw tools registered.
-func New(client tools.IronclawClient, logger *zap.Logger, version string) *Server {
+// cli is optional; when set, CEO tools (crm_brief, morning_brief, night_audit, spawn_persona, fleet_status, loadtest) are registered and invoke mc-cli.
+func New(client tools.IronclawClient, cli tools.CLIRunner, logger *zap.Logger, version string) *Server {
 	s := &Server{
-		client:  client,
-		logger:  logger,
+		client: client,
+		cli:    cli,
+		logger: logger,
 		version: version,
 	}
 	s.mcp = s.buildMCPServer()
@@ -76,6 +79,16 @@ func (s *Server) buildMCPServer() *server.MCPServer {
 	reviewedPush := tools.NewReviewedPushHandler()
 	srv.AddTool(reviewedPush.Tool(), reviewedPush.Handle)
 	s.toolCount++
+
+	if s.cli != nil {
+		srv.AddTool(tools.NewCRMBriefHandler(s.cli).Tool(), tools.NewCRMBriefHandler(s.cli).Handle)
+		srv.AddTool(tools.NewMorningBriefHandler(s.cli).Tool(), tools.NewMorningBriefHandler(s.cli).Handle)
+		srv.AddTool(tools.NewNightAuditHandler(s.cli).Tool(), tools.NewNightAuditHandler(s.cli).Handle)
+		srv.AddTool(tools.NewSpawnPersonaHandler(s.cli).Tool(), tools.NewSpawnPersonaHandler(s.cli).Handle)
+		srv.AddTool(tools.NewFleetStatusHandler(s.cli).Tool(), tools.NewFleetStatusHandler(s.cli).Handle)
+		srv.AddTool(tools.NewLoadtestHandler(s.cli).Tool(), tools.NewLoadtestHandler(s.cli).Handle)
+		s.toolCount += 6
+	}
 
 	return srv
 }
