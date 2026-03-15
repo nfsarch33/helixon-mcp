@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -524,4 +525,205 @@ func TestResearchHandler_HandleCrawl_MinimalOptions(t *testing.T) {
 	assert.NotContains(t, capturedArgs, "--dynamic")
 	assert.NotContains(t, capturedArgs, "--extract")
 	assert.NotContains(t, capturedArgs, "--chrome-debug-url")
+}
+
+// --- Deakin tool tests ---
+
+func TestResearchHandler_DeakinTool_Definition(t *testing.T) {
+	h := NewResearchHandler()
+	tool := h.DeakinTool()
+	assert.Equal(t, "ironclaw_research_deakin", tool.Name)
+	assert.Contains(t, tool.Description, "Deakin")
+	assert.Contains(t, tool.Description, "D2L")
+}
+
+func TestResearchHandler_HandleDeakin_Success(t *testing.T) {
+	h := &ResearchHandler{
+		run: fakeRunner(`{"units_scraped":4,"total_pages":24}`, nil),
+		bin: "research-agent",
+	}
+
+	result, err := h.HandleDeakin(context.Background(), callTool(t, map[string]any{
+		"chrome_debug_url": "localhost:9222",
+	}))
+	require.NoError(t, err)
+	assert.False(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "units_scraped")
+}
+
+func TestResearchHandler_HandleDeakin_MissingChromeURL(t *testing.T) {
+	h := NewResearchHandler()
+	result, err := h.HandleDeakin(context.Background(), callTool(t, map[string]any{}))
+	require.NoError(t, err)
+	assert.True(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "chrome_debug_url")
+}
+
+func TestResearchHandler_HandleDeakin_WithAllOptions(t *testing.T) {
+	var capturedArgs []string
+	h := &ResearchHandler{
+		run: func(_ context.Context, _, _ string, _ string, args ...string) (string, error) {
+			capturedArgs = args
+			return "{}", nil
+		},
+		bin: "research-agent",
+	}
+
+	_, err := h.HandleDeakin(context.Background(), callTool(t, map[string]any{
+		"chrome_debug_url": "ws://localhost:9222/devtools/browser/abc",
+		"output_dir":       "/tmp/deakin-test",
+		"unit":             "HPS203",
+		"max_pages":        "100",
+		"depth":            "2",
+		"extract":          "true",
+	}))
+	require.NoError(t, err)
+	assert.Contains(t, capturedArgs, "--chrome-debug-url")
+	assert.Contains(t, capturedArgs, "ws://localhost:9222/devtools/browser/abc")
+	assert.Contains(t, capturedArgs, "deakin")
+	assert.Contains(t, capturedArgs, "--output-dir")
+	assert.Contains(t, capturedArgs, "/tmp/deakin-test")
+	assert.Contains(t, capturedArgs, "--unit")
+	assert.Contains(t, capturedArgs, "HPS203")
+	assert.Contains(t, capturedArgs, "--max-pages")
+	assert.Contains(t, capturedArgs, "100")
+	assert.Contains(t, capturedArgs, "--depth")
+	assert.Contains(t, capturedArgs, "2")
+	assert.Contains(t, capturedArgs, "--extract")
+}
+
+func TestResearchHandler_HandleDeakin_ExtractDisabled(t *testing.T) {
+	var capturedArgs []string
+	h := &ResearchHandler{
+		run: func(_ context.Context, _, _ string, _ string, args ...string) (string, error) {
+			capturedArgs = args
+			return "{}", nil
+		},
+		bin: "research-agent",
+	}
+
+	_, err := h.HandleDeakin(context.Background(), callTool(t, map[string]any{
+		"chrome_debug_url": "localhost:9222",
+		"extract":          "false",
+	}))
+	require.NoError(t, err)
+	assert.NotContains(t, capturedArgs, "--extract")
+}
+
+func TestResearchHandler_HandleDeakin_Error(t *testing.T) {
+	h := &ResearchHandler{
+		run: fakeRunner("", fmt.Errorf("chrome not reachable")),
+		bin: "research-agent",
+	}
+
+	result, err := h.HandleDeakin(context.Background(), callTool(t, map[string]any{
+		"chrome_debug_url": "localhost:9222",
+	}))
+	require.NoError(t, err)
+	assert.True(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "chrome not reachable")
+}
+
+// --- Assessments tool tests ---
+
+func TestResearchHandler_AssessmentsTool_Definition(t *testing.T) {
+	h := NewResearchHandler()
+	tool := h.AssessmentsTool()
+	assert.Equal(t, "ironclaw_research_assessments", tool.Name)
+	assert.Contains(t, tool.Description, "assessment")
+	assert.Contains(t, tool.Description, "due date")
+}
+
+func TestResearchHandler_HandleAssessments_ReadJSON(t *testing.T) {
+	dir := t.TempDir()
+	testJSON := `[{"name":"Essay 1","type":"assignment","unit_code":"HPS203"}]`
+	require.NoError(t, os.WriteFile(dir+"/all-assessments.json", []byte(testJSON), 0o644))
+
+	h := NewResearchHandler()
+	result, err := h.HandleAssessments(context.Background(), callTool(t, map[string]any{
+		"data_dir": dir,
+	}))
+	require.NoError(t, err)
+	assert.False(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "Essay 1")
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "HPS203")
+}
+
+func TestResearchHandler_HandleAssessments_ReadMarkdown(t *testing.T) {
+	dir := t.TempDir()
+	testMD := "# All Assessments\n\n| Unit | Assessment |\n|---|---|\n| HPS203 | Essay 1 |"
+	require.NoError(t, os.WriteFile(dir+"/all-assessments.md", []byte(testMD), 0o644))
+
+	h := NewResearchHandler()
+	result, err := h.HandleAssessments(context.Background(), callTool(t, map[string]any{
+		"data_dir": dir,
+		"format":   "markdown",
+	}))
+	require.NoError(t, err)
+	assert.False(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "Essay 1")
+}
+
+func TestResearchHandler_HandleAssessments_FilterByUnit(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(dir+"/HPS203", 0o755))
+	testJSON := `[{"name":"Mid-term Quiz","type":"quiz","unit_code":"HPS203"}]`
+	require.NoError(t, os.WriteFile(dir+"/HPS203/assessments.json", []byte(testJSON), 0o644))
+
+	h := NewResearchHandler()
+	result, err := h.HandleAssessments(context.Background(), callTool(t, map[string]any{
+		"data_dir": dir,
+		"unit":     "HPS203",
+	}))
+	require.NoError(t, err)
+	assert.False(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "Mid-term Quiz")
+}
+
+func TestResearchHandler_HandleAssessments_MissingFile(t *testing.T) {
+	dir := t.TempDir()
+	h := NewResearchHandler()
+	result, err := h.HandleAssessments(context.Background(), callTool(t, map[string]any{
+		"data_dir": dir,
+	}))
+	require.NoError(t, err)
+	assert.True(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "read assessments")
+}
+
+func TestResearchHandler_HandleAssessments_RefreshWithoutChrome(t *testing.T) {
+	h := NewResearchHandler()
+	result, err := h.HandleAssessments(context.Background(), callTool(t, map[string]any{
+		"refresh": "true",
+	}))
+	require.NoError(t, err)
+	assert.True(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "chrome_debug_url is required")
+}
+
+func TestResearchHandler_HandleAssessments_RefreshTriggersDeakin(t *testing.T) {
+	dir := t.TempDir()
+	testJSON := `[{"name":"Essay","type":"assignment"}]`
+	require.NoError(t, os.WriteFile(dir+"/all-assessments.json", []byte(testJSON), 0o644))
+
+	var capturedArgs []string
+	h := &ResearchHandler{
+		run: func(_ context.Context, _, _ string, _ string, args ...string) (string, error) {
+			capturedArgs = args
+			return "{}", nil
+		},
+		bin: "research-agent",
+	}
+
+	result, err := h.HandleAssessments(context.Background(), callTool(t, map[string]any{
+		"data_dir":         dir,
+		"refresh":          "true",
+		"chrome_debug_url": "localhost:9222",
+	}))
+	require.NoError(t, err)
+	assert.False(t, result.IsError)
+	assert.Contains(t, capturedArgs, "--chrome-debug-url")
+	assert.Contains(t, capturedArgs, "localhost:9222")
+	assert.Contains(t, capturedArgs, "deakin")
+	assert.Contains(t, capturedArgs, "--output-dir")
 }

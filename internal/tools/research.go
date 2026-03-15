@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -494,4 +495,134 @@ func (h *ResearchHandler) HandleCrawl(ctx context.Context, req mcp.CallToolReque
 		return mcp.NewToolResultError(fmt.Sprintf("crawl failed: %v", err)), nil
 	}
 	return mcp.NewToolResultText(out), nil
+}
+
+// DeakinTool returns the MCP tool for scraping Deakin D2L course content.
+func (h *ResearchHandler) DeakinTool() mcp.Tool {
+	return mcp.NewTool(
+		"ironclaw_research_deakin",
+		mcp.WithDescription("Scrape Deakin University D2L course content for all 4 active units (HPS203, HSH206, MMH250, MMM240). Extracts weekly content, assessments with due dates, and unit guides. Requires an authenticated Chrome debug session."),
+		mcp.WithString("chrome_debug_url",
+			mcp.Required(),
+			mcp.Description("Chrome DevTools debug URL (e.g. 'localhost:9222' or full ws:// URL) with an authenticated D2L session."),
+		),
+		mcp.WithString("output_dir",
+			mcp.Description("Output directory for scraped content. Default: ~/ai-agent-business-stack/data/deakin-courses/."),
+		),
+		mcp.WithString("unit",
+			mcp.Description("Filter to a single unit code (e.g. 'HPS203') or unit ID. Default: all 4 units."),
+		),
+		mcp.WithString("max_pages",
+			mcp.Description("Maximum pages to crawl per unit. Default: '200'."),
+		),
+		mcp.WithString("depth",
+			mcp.Description("Maximum link-following depth. Default: '1'."),
+		),
+		mcp.WithString("extract",
+			mcp.Description("Set to 'true' to extract article content from each page. Default: true."),
+		),
+	)
+}
+
+// HandleDeakin executes the Deakin D2L course scrape via the research-agent CLI.
+func (h *ResearchHandler) HandleDeakin(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	chromeURL, err := requiredString(req, "chrome_debug_url")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	args := []string{"--chrome-debug-url", chromeURL, "deakin"}
+
+	if od := optionalString(req, "output_dir"); od != "" {
+		args = append(args, "--output-dir", od)
+	}
+	if u := optionalString(req, "unit"); u != "" {
+		args = append(args, "--unit", u)
+	}
+	if mp := optionalString(req, "max_pages"); mp != "" {
+		args = append(args, "--max-pages", mp)
+	}
+	if d := optionalString(req, "depth"); d != "" {
+		args = append(args, "--depth", d)
+	}
+	if ext := optionalString(req, "extract"); ext != "false" {
+		args = append(args, "--extract")
+	}
+
+	out, err := h.run(ctx, "", "", h.bin, args...)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("deakin scrape failed: %v", err)), nil
+	}
+	return mcp.NewToolResultText(out), nil
+}
+
+// AssessmentsTool returns the MCP tool for retrieving Deakin assessment due dates.
+func (h *ResearchHandler) AssessmentsTool() mcp.Tool {
+	return mcp.NewTool(
+		"ironclaw_research_assessments",
+		mcp.WithDescription("Retrieve Deakin assessment due dates from a previous scrape. Returns all assessments sorted by due date across all units, including assignment names, types, due/end dates, and submission status. Can also trigger a fresh assessment-only extraction."),
+		mcp.WithString("data_dir",
+			mcp.Description("Directory containing scrape output. Default: ~/ai-agent-business-stack/data/deakin-courses/."),
+		),
+		mcp.WithString("unit",
+			mcp.Description("Filter to a single unit code (e.g. 'HPS203'). Default: all units."),
+		),
+		mcp.WithString("refresh",
+			mcp.Description("Set to 'true' to trigger a fresh assessment extraction (requires chrome_debug_url). Default: false."),
+		),
+		mcp.WithString("chrome_debug_url",
+			mcp.Description("Chrome DevTools debug URL for fresh extraction. Only required when refresh=true."),
+		),
+		mcp.WithString("format",
+			mcp.Description("Output format: 'json' (default) or 'markdown'."),
+		),
+	)
+}
+
+// HandleAssessments retrieves or refreshes Deakin assessment due dates.
+func (h *ResearchHandler) HandleAssessments(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	dataDir := optionalString(req, "data_dir")
+	if dataDir == "" {
+		home, _ := os.UserHomeDir()
+		dataDir = home + "/ai-agent-business-stack/data/deakin-courses"
+	}
+
+	if optionalBool(req, "refresh") {
+		chromeURL := optionalString(req, "chrome_debug_url")
+		if chromeURL == "" {
+			return mcp.NewToolResultError("chrome_debug_url is required when refresh=true"), nil
+		}
+		args := []string{"--chrome-debug-url", chromeURL, "deakin", "--output-dir", dataDir, "--extract"}
+		if u := optionalString(req, "unit"); u != "" {
+			args = append(args, "--unit", u)
+		}
+		_, err := h.run(ctx, "", "", h.bin, args...)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("assessment refresh failed: %v", err)), nil
+		}
+	}
+
+	format := optionalString(req, "format")
+	unit := optionalString(req, "unit")
+
+	var targetFile string
+	if unit != "" {
+		if format == "markdown" {
+			targetFile = dataDir + "/" + strings.ToUpper(unit) + "/assessments.md"
+		} else {
+			targetFile = dataDir + "/" + strings.ToUpper(unit) + "/assessments.json"
+		}
+	} else {
+		if format == "markdown" {
+			targetFile = dataDir + "/all-assessments.md"
+		} else {
+			targetFile = dataDir + "/all-assessments.json"
+		}
+	}
+
+	data, err := os.ReadFile(targetFile)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("read assessments from %s: %v", targetFile, err)), nil
+	}
+	return mcp.NewToolResultText(string(data)), nil
 }
