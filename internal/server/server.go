@@ -85,6 +85,13 @@ func (s *Server) buildMCPServer() *mcpserver.MCPServer {
 	agentStatus := tools.NewAgentStatusHandler(s.client)
 	addTool(agentStatus.Tool(), agentStatus.Handle)
 
+	research := tools.NewResearchHandler()
+	addTool(research.ScrapeTool(), research.HandleScrape)
+	addTool(research.PDFTool(), research.HandlePDF)
+	addTool(research.SearchTool(), research.HandleSearch)
+	addTool(research.StoreTool(), research.HandleStore)
+	addTool(research.PipelineTool(), research.HandlePipeline)
+
 	if s.prom != nil {
 		getMetrics := tools.NewGetMetricsHandler(s.prom)
 		addTool(getMetrics.Tool(), getMetrics.Handle)
