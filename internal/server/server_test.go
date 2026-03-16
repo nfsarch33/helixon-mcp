@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
 	"github.com/stretchr/testify/assert"
@@ -117,9 +118,25 @@ func TestRun_UnknownTransport(t *testing.T) {
 	assert.Contains(t, err.Error(), "unknown transport")
 }
 
-func TestRun_SSENotImplemented(t *testing.T) {
+func TestRun_SSE_StartsAndStops(t *testing.T) {
 	logger := zap.NewNop()
 	srv := New(new(mockClient), nil, nil, nil, logger, "0.1.0")
-	err := srv.Run(context.Background(), "sse")
-	assert.Error(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Setenv("MCP_SSE_ADDR", ":0")
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- srv.Run(ctx, "sse")
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+	cancel()
+
+	select {
+	case err := <-errCh:
+		assert.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("SSE server did not stop within timeout")
+	}
 }

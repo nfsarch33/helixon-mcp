@@ -4,6 +4,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -21,6 +22,7 @@ type Server struct {
 	logger    *zap.Logger
 	version   string
 	mcp       *mcpserver.MCPServer
+	sse       *mcpserver.SSEServer
 	toolCount int
 }
 
@@ -159,10 +161,46 @@ func (s *Server) Run(ctx context.Context, transport string) error {
 		stdioSrv := mcpserver.NewStdioServer(s.mcp)
 		return stdioSrv.Listen(ctx, os.Stdin, os.Stdout)
 	case "sse":
-		return fmt.Errorf("SSE transport not yet implemented; use stdio")
+		return s.runSSE(ctx)
 	default:
 		return fmt.Errorf("unknown transport %q", transport)
 	}
+}
+
+// SSEAddr is the default SSE listen address.
+const SSEAddr = ":9090"
+
+func (s *Server) runSSE(ctx context.Context) error {
+	addr := SSEAddr
+	if envAddr := os.Getenv("MCP_SSE_ADDR"); envAddr != "" {
+		addr = envAddr
+	}
+	sseSrv := mcpserver.NewSSEServer(s.mcp,
+		mcpserver.WithBaseURL(fmt.Sprintf("http://localhost%s", addr)),
+		mcpserver.WithKeepAlive(true),
+	)
+	s.sse = sseSrv
+	s.logger.Info("SSE server starting", zap.String("addr", addr))
+
+	mux := http.NewServeMux()
+	mux.Handle("/", sseSrv)
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"status":"ok","transport":"sse","tools":%d}`, s.toolCount)
+	})
+
+	srv := &http.Server{Addr: addr, Handler: mux}
+	go func() {
+		<-ctx.Done()
+		s.logger.Info("SSE server shutting down")
+		sseSrv.Shutdown(context.Background())
+		srv.Close()
+	}()
+
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return fmt.Errorf("SSE server: %w", err)
+	}
+	return nil
 }
 
 // MCPServer exposes the underlying MCP server (for testing).
