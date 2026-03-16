@@ -97,16 +97,16 @@ func TestNew_WithCLI_RegistersCEOTools(t *testing.T) {
 	logger := zap.NewNop()
 	srv := New(new(mockClient), nil, &mockCLI{}, nil, logger, "0.1.0")
 	count := srv.RegisteredToolCount()
-	// 24 base + 6 CEO tools = 30
-	assert.Equal(t, 30, count)
+	// 24 base + 6 CEO + 9 dual-ops (k8s,tf,fleet,grafana,governance,timeline,llm_route,llm_usage,llm_budget) = 39
+	assert.Equal(t, 39, count)
 }
 
 func TestNew_WithAll_RegistersAllTools(t *testing.T) {
 	logger := zap.NewNop()
 	srv := New(new(mockClient), new(mockProm), &mockCLI{}, &mockCLI{}, logger, "0.1.0")
 	count := srv.RegisteredToolCount()
-	// 24 base + get_metrics + 6 CEO tools + 1 GWS tool = 32
-	assert.Equal(t, 32, count)
+	// 24 base + get_metrics + 6 CEO + 1 GWS + 9 dual-ops = 41
+	assert.Equal(t, 41, count)
 }
 
 func TestRun_UnknownTransport(t *testing.T) {
