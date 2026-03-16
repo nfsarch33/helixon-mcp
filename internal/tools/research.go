@@ -1,10 +1,12 @@
 package tools
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -17,8 +19,47 @@ type ResearchHandler struct {
 }
 
 // NewResearchHandler creates a handler that invokes the research-agent binary.
+// Uses a custom runner that strips DATABASE_URL from child process environment
+// to prevent IronClaw's libsql config from leaking into the research-agent's
+// getStore logic, which would incorrectly try a postgres connection.
 func NewResearchHandler() *ResearchHandler {
-	return &ResearchHandler{run: runCommand, bin: "research-agent"}
+	return &ResearchHandler{run: runResearchCommand, bin: "research-agent"}
+}
+
+// runResearchCommand wraps runCommand but strips DATABASE_URL and DATABASE_BACKEND
+// from the child process environment so the research-agent uses its local SQLite store.
+func runResearchCommand(ctx context.Context, workdir string, stdin string, name string, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Dir = workdir
+	if stdin != "" {
+		cmd.Stdin = strings.NewReader(stdin)
+	}
+
+	env := os.Environ()
+	filtered := make([]string, 0, len(env))
+	for _, e := range env {
+		if !strings.HasPrefix(e, "DATABASE_URL=") && !strings.HasPrefix(e, "DATABASE_BACKEND=") {
+			filtered = append(filtered, e)
+		}
+	}
+	cmd.Env = filtered
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		errText := strings.TrimSpace(stderr.String())
+		if errText == "" {
+			errText = err.Error()
+		}
+		return "", fmt.Errorf("%s %s: %s", name, strings.Join(args, " "), errText)
+	}
+
+	if text := strings.TrimSpace(stdout.String()); text != "" {
+		return text, nil
+	}
+	return strings.TrimSpace(stderr.String()), nil
 }
 
 // ScrapeTool returns the MCP tool for web scraping.
@@ -61,7 +102,7 @@ func (h *ResearchHandler) HandleScrape(ctx context.Context, req mcp.CallToolRequ
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	args := []string{"scrape", "--url", url, "--json"}
+	args := []string{"scrape", url, "--format", "json"}
 
 	if sel := optionalString(req, "selectors"); sel != "" {
 		args = append(args, "--selectors", sel)
@@ -150,8 +191,8 @@ func (h *ResearchHandler) SearchTool() mcp.Tool {
 		mcp.WithString("limit",
 			mcp.Description("Maximum number of results. Default: '10'."),
 		),
-		mcp.WithString("tags",
-			mcp.Description("Comma-separated tag filter. Example: 'market,fitness'."),
+		mcp.WithString("data_dir",
+			mcp.Description("Local data store directory. Default: '.research-data'."),
 		),
 	)
 }
@@ -163,13 +204,14 @@ func (h *ResearchHandler) HandleSearch(ctx context.Context, req mcp.CallToolRequ
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	args := []string{"search", "--query", query, "--json"}
+	args := []string{"search", query}
 
 	if limit := optionalString(req, "limit"); limit != "" {
 		args = append(args, "--limit", limit)
 	}
-	if tags := optionalString(req, "tags"); tags != "" {
-		args = append(args, "--tags", tags)
+	dataDir := optionalString(req, "data_dir")
+	if dataDir != "" {
+		args = append(args, "--data-dir", dataDir)
 	}
 
 	out, err := h.run(ctx, "", "", h.bin, args...)

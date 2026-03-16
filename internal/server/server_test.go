@@ -105,13 +105,8 @@ func TestNew_WithAll_RegistersAllTools(t *testing.T) {
 	logger := zap.NewNop()
 	srv := New(new(mockClient), new(mockProm), &mockCLI{}, &mockCLI{}, logger, "0.1.0")
 	count := srv.RegisteredToolCount()
-<<<<<<< HEAD
-	// 24 base + get_metrics + 6 CEO tools = 31
-	assert.Equal(t, 31, count)
-=======
-	// 14 base + get_metrics + 6 CEO tools + 1 GWS tool = 22
-	assert.Equal(t, 22, count)
->>>>>>> 70b0a55 (feat: MVP 52-60 Google Workspace integration (gws tool & prometheus metrics))
+	// 24 base + get_metrics + 6 CEO tools + 1 GWS tool = 32
+	assert.Equal(t, 32, count)
 }
 
 func TestRun_UnknownTransport(t *testing.T) {
