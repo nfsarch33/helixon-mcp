@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -123,10 +124,39 @@ func TestResearchHandler_HandlePDF_LocalFile(t *testing.T) {
 		"output": "/tmp/out",
 	}))
 	require.NoError(t, err)
-	assert.Contains(t, captured, "--file")
+	assert.Contains(t, captured, "pdf")
 	assert.Contains(t, captured, "/tmp/test.pdf")
-	assert.Contains(t, captured, "--output")
+	assert.Contains(t, captured, "--output-dir")
 	assert.Contains(t, captured, "/tmp/out")
+	assert.NotContains(t, captured, "--file")
+	assert.NotContains(t, captured, "--url")
+}
+
+func TestResearchHandler_HandlePDF_URLAsPositionalArg(t *testing.T) {
+	var captured []string
+	h := &ResearchHandler{run: captureRunner(&captured), bin: "research-agent"}
+
+	_, err := h.HandlePDF(context.Background(), callTool(t, map[string]any{
+		"url": "https://example.com/doc.pdf",
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, "research-agent", captured[0])
+	assert.Equal(t, "pdf", captured[1])
+	assert.Equal(t, "https://example.com/doc.pdf", captured[2])
+	assert.Contains(t, captured, "--output-dir")
+	assert.Contains(t, captured, "/tmp/research-pdf")
+}
+
+func TestResearchHandler_HandlePDF_TildeExpansion(t *testing.T) {
+	var captured []string
+	h := &ResearchHandler{run: captureRunner(&captured), bin: "research-agent"}
+
+	_, err := h.HandlePDF(context.Background(), callTool(t, map[string]any{
+		"file": "~/Documents/test.pdf",
+	}))
+	require.NoError(t, err)
+	home, _ := os.UserHomeDir()
+	assert.Contains(t, captured, home+"/Documents/test.pdf")
 }
 
 func TestResearchHandler_HandlePDF_NoArgs(t *testing.T) {
@@ -172,9 +202,21 @@ func TestResearchHandler_HandleStore_Success(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	assert.False(t, result.IsError)
+	assert.Contains(t, captured, "store")
 	assert.Contains(t, captured, "--title")
-	assert.Contains(t, captured, "--source")
+	assert.Contains(t, captured, "Q1 Market Report")
 	assert.Contains(t, captured, "--tags")
+	assert.Contains(t, captured, "market,q1")
+	assert.NotContains(t, captured, "--content")
+
+	foundTempFile := false
+	for _, arg := range captured {
+		if strings.Contains(arg, "research-store-") && strings.HasSuffix(arg, ".md") {
+			foundTempFile = true
+			break
+		}
+	}
+	assert.True(t, foundTempFile, "store should pass content via temp file as positional arg")
 }
 
 func TestResearchHandler_HandleStore_MissingTitle(t *testing.T) {
@@ -195,39 +237,22 @@ func TestResearchHandler_HandleStore_MissingContent(t *testing.T) {
 	assert.True(t, result.IsError)
 }
 
-func TestResearchHandler_HandlePipeline_Success(t *testing.T) {
-	h := &ResearchHandler{
-		run: fakeRunner(`{"stages_completed":3}`, nil),
-		bin: "research-agent",
-	}
-
+func TestResearchHandler_HandlePipeline_Unsupported(t *testing.T) {
+	h := NewResearchHandler()
 	result, err := h.HandlePipeline(context.Background(), callTool(t, map[string]any{
 		"pipeline_file": "/path/to/pipeline.yml",
 	}))
 	require.NoError(t, err)
-	assert.False(t, result.IsError)
-	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "completed")
+	assert.True(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "not yet implemented")
 }
 
-func TestResearchHandler_HandlePipeline_MissingFile(t *testing.T) {
+func TestResearchHandler_HandlePipeline_UnsupportedNoArgs(t *testing.T) {
 	h := NewResearchHandler()
 	result, err := h.HandlePipeline(context.Background(), callTool(t, map[string]any{}))
 	require.NoError(t, err)
 	assert.True(t, result.IsError)
-}
-
-func TestResearchHandler_HandlePipeline_Error(t *testing.T) {
-	h := &ResearchHandler{
-		run: fakeRunner("", fmt.Errorf("pipeline stage failed")),
-		bin: "research-agent",
-	}
-
-	result, err := h.HandlePipeline(context.Background(), callTool(t, map[string]any{
-		"pipeline_file": "/path/to/pipeline.yml",
-	}))
-	require.NoError(t, err)
-	assert.True(t, result.IsError)
-	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "pipeline stage failed")
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "not yet implemented")
 }
 
 // --- Transcript tool tests ---
@@ -590,6 +615,82 @@ func TestResearchHandler_HandleDeakin_WithAllOptions(t *testing.T) {
 	assert.Contains(t, capturedArgs, "--depth")
 	assert.Contains(t, capturedArgs, "2")
 	assert.Contains(t, capturedArgs, "--extract")
+}
+
+func TestResearchHandler_HandleDeakin_WithDownloadPDFs(t *testing.T) {
+	var capturedArgs []string
+	h := &ResearchHandler{
+		run: func(_ context.Context, _, _ string, _ string, args ...string) (string, error) {
+			capturedArgs = args
+			return "{}", nil
+		},
+		bin: "research-agent",
+	}
+
+	_, err := h.HandleDeakin(context.Background(), callTool(t, map[string]any{
+		"chrome_debug_url": "localhost:9222",
+		"download_pdfs":    "true",
+	}))
+	require.NoError(t, err)
+	assert.Contains(t, capturedArgs, "--download-pdfs")
+}
+
+func TestResearchHandler_HandleDeakin_WithDownloadDocs(t *testing.T) {
+	var capturedArgs []string
+	h := &ResearchHandler{
+		run: func(_ context.Context, _, _ string, _ string, args ...string) (string, error) {
+			capturedArgs = args
+			return "{}", nil
+		},
+		bin: "research-agent",
+	}
+
+	_, err := h.HandleDeakin(context.Background(), callTool(t, map[string]any{
+		"chrome_debug_url": "localhost:9222",
+		"download_docs":    "true",
+	}))
+	require.NoError(t, err)
+	assert.Contains(t, capturedArgs, "--download-docs")
+}
+
+func TestResearchHandler_HandleDeakin_WithBothDownloads(t *testing.T) {
+	var capturedArgs []string
+	h := &ResearchHandler{
+		run: func(_ context.Context, _, _ string, _ string, args ...string) (string, error) {
+			capturedArgs = args
+			return "{}", nil
+		},
+		bin: "research-agent",
+	}
+
+	_, err := h.HandleDeakin(context.Background(), callTool(t, map[string]any{
+		"chrome_debug_url": "localhost:9222",
+		"download_pdfs":    "true",
+		"download_docs":    "true",
+	}))
+	require.NoError(t, err)
+	assert.Contains(t, capturedArgs, "--download-pdfs")
+	assert.Contains(t, capturedArgs, "--download-docs")
+}
+
+func TestResearchHandler_HandleDeakin_TildeExpansionOutputDir(t *testing.T) {
+	var capturedArgs []string
+	h := &ResearchHandler{
+		run: func(_ context.Context, _, _ string, _ string, args ...string) (string, error) {
+			capturedArgs = args
+			return "{}", nil
+		},
+		bin: "research-agent",
+	}
+
+	_, err := h.HandleDeakin(context.Background(), callTool(t, map[string]any{
+		"chrome_debug_url": "localhost:9222",
+		"output_dir":       "~/ai-agent-business-stack/data/deakin-courses",
+	}))
+	require.NoError(t, err)
+	home, _ := os.UserHomeDir()
+	assert.Contains(t, capturedArgs, "--output-dir")
+	assert.Contains(t, capturedArgs, home+"/ai-agent-business-stack/data/deakin-courses")
 }
 
 func TestResearchHandler_HandleDeakin_ExtractDisabled(t *testing.T) {

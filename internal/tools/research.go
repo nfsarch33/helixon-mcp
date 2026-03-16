@@ -3,7 +3,6 @@ package tools
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -151,6 +150,7 @@ func (h *ResearchHandler) PDFTool() mcp.Tool {
 }
 
 // HandlePDF executes PDF extraction via the research-agent CLI.
+// CLI signature: research-agent pdf <url|path> [--output-dir DIR] [--extract]
 func (h *ResearchHandler) HandlePDF(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	url := optionalString(req, "url")
 	file := optionalString(req, "file")
@@ -158,19 +158,17 @@ func (h *ResearchHandler) HandlePDF(ctx context.Context, req mcp.CallToolRequest
 		return mcp.NewToolResultError("either 'url' or 'file' argument is required"), nil
 	}
 
-	args := []string{"pdf"}
-	if url != "" {
-		args = append(args, "--url", url)
+	target := url
+	if target == "" {
+		target = expandTilde(file)
 	}
-	if file != "" {
-		args = append(args, "--file", file)
-	}
+	args := []string{"pdf", target}
 
 	output := optionalString(req, "output")
 	if output == "" {
 		output = "/tmp/research-pdf"
 	}
-	args = append(args, "--output", output)
+	args = append(args, "--output-dir", output)
 
 	out, err := h.run(ctx, "", "", h.bin, args...)
 	if err != nil {
@@ -244,6 +242,7 @@ func (h *ResearchHandler) StoreTool() mcp.Tool {
 }
 
 // HandleStore stores a research document via the research-agent CLI.
+// CLI signature: research-agent store <file> [--title T] [--tags T] [--source-type T] [--data-dir D]
 func (h *ResearchHandler) HandleStore(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	title, err := requiredString(req, "title")
 	if err != nil {
@@ -254,26 +253,32 @@ func (h *ResearchHandler) HandleStore(ctx context.Context, req mcp.CallToolReque
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	args := []string{"store", "--title", title}
+	tmpFile, err := os.CreateTemp("", "research-store-*.md")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("create temp file: %v", err)), nil
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(content); err != nil {
+		tmpFile.Close()
+		return mcp.NewToolResultError(fmt.Sprintf("write temp file: %v", err)), nil
+	}
+	tmpFile.Close()
+
+	args := []string{"store", tmpFile.Name(), "--title", title, "--source-type", "file"}
 
 	if source := optionalString(req, "source"); source != "" {
-		args = append(args, "--source", source)
+		args = append(args, "--source-type", source)
 	}
 	if tags := optionalString(req, "tags"); tags != "" {
 		args = append(args, "--tags", tags)
 	}
 
-	out, err := h.run(ctx, "", "", h.bin, append(args, "--content", content)...)
+	out, err := h.run(ctx, "", "", h.bin, args...)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("store failed: %v", err)), nil
 	}
 	return mcp.NewToolResultText(out), nil
-}
-
-type pipelineRunResult struct {
-	Pipeline string `json:"pipeline"`
-	Status   string `json:"status"`
-	Output   string `json:"output"`
 }
 
 // PipelineTool returns the MCP tool for running research pipelines.
@@ -288,25 +293,9 @@ func (h *ResearchHandler) PipelineTool() mcp.Tool {
 	)
 }
 
-// HandlePipeline executes a research pipeline.
-func (h *ResearchHandler) HandlePipeline(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	pipelineFile, err := requiredString(req, "pipeline_file")
-	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
-
-	out, err := h.run(ctx, "", "", h.bin, "pipeline", "--file", pipelineFile, "--json")
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("pipeline failed: %v", err)), nil
-	}
-
-	result := pipelineRunResult{
-		Pipeline: pipelineFile,
-		Status:   "completed",
-		Output:   strings.TrimSpace(out),
-	}
-	b, _ := json.MarshalIndent(result, "", "  ")
-	return mcp.NewToolResultText(string(b)), nil
+// HandlePipeline is currently unsupported -- the CLI has no 'pipeline' subcommand yet.
+func (h *ResearchHandler) HandlePipeline(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return mcp.NewToolResultError("pipeline subcommand is not yet implemented in the research-agent CLI; planned for Sprint R20"), nil
 }
 
 // TranscriptTool returns the MCP tool for media download and transcription.
@@ -563,6 +552,12 @@ func (h *ResearchHandler) DeakinTool() mcp.Tool {
 		mcp.WithString("extract",
 			mcp.Description("Set to 'true' to extract article content from each page. Default: true."),
 		),
+		mcp.WithString("download_pdfs",
+			mcp.Description("Set to 'true' to download and extract PDFs linked from External Resource pages. Default: false."),
+		),
+		mcp.WithString("download_docs",
+			mcp.Description("Set to 'true' to download and extract Word/Office documents (.docx, .doc, .xlsx, .pptx) linked from External Resource pages. Default: false."),
+		),
 	)
 }
 
@@ -576,7 +571,7 @@ func (h *ResearchHandler) HandleDeakin(ctx context.Context, req mcp.CallToolRequ
 	args := []string{"--chrome-debug-url", chromeURL, "deakin"}
 
 	if od := optionalString(req, "output_dir"); od != "" {
-		args = append(args, "--output-dir", od)
+		args = append(args, "--output-dir", expandTilde(od))
 	}
 	if u := optionalString(req, "unit"); u != "" {
 		args = append(args, "--unit", u)
@@ -589,6 +584,12 @@ func (h *ResearchHandler) HandleDeakin(ctx context.Context, req mcp.CallToolRequ
 	}
 	if ext := optionalString(req, "extract"); ext != "false" {
 		args = append(args, "--extract")
+	}
+	if optionalBool(req, "download_pdfs") {
+		args = append(args, "--download-pdfs")
+	}
+	if optionalBool(req, "download_docs") {
+		args = append(args, "--download-docs")
 	}
 
 	out, err := h.run(ctx, "", "", h.bin, args...)
