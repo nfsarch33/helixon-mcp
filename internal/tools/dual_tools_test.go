@@ -226,13 +226,18 @@ func TestGrafanaOpsHandler_Handle_Export(t *testing.T) {
 
 func TestDualToolNames_Completeness(t *testing.T) {
 	names := DualToolNames()
-	assert.Len(t, names, 5)
+	assert.Len(t, names, 10)
 	expected := map[string]bool{
 		"ironclaw_gws_run":           true,
 		"ironclaw_k8s_ops":           true,
 		"ironclaw_tf_ops":            true,
 		"ironclaw_fleet_ops":         true,
 		"ironclaw_grafana_provision": true,
+		"ironclaw_governance":        true,
+		"ironclaw_timeline":          true,
+		"ironclaw_llm_route":         true,
+		"ironclaw_llm_usage":         true,
+		"ironclaw_llm_budget":        true,
 	}
 	for _, n := range names {
 		assert.True(t, expected[n], "unexpected tool name: %s", n)

@@ -223,6 +223,11 @@ func DualToolNames() []string {
 		"ironclaw_tf_ops",
 		"ironclaw_fleet_ops",
 		"ironclaw_grafana_provision",
+		"ironclaw_governance",
+		"ironclaw_timeline",
+		"ironclaw_llm_route",
+		"ironclaw_llm_usage",
+		"ironclaw_llm_budget",
 	}
 }
 

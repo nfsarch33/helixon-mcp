@@ -131,6 +131,21 @@ func (s *Server) buildMCPServer() *mcpserver.MCPServer {
 
 		grafanaOps := tools.NewGrafanaOpsHandler(s.cli)
 		addTool(grafanaOps.Tool(), grafanaOps.Handle)
+
+		governanceOps := tools.NewGovernanceHandler(s.cli)
+		addTool(governanceOps.Tool(), governanceOps.Handle)
+
+		timelineOps := tools.NewTimelineHandler(s.cli)
+		addTool(timelineOps.Tool(), timelineOps.Handle)
+
+		llmRoute := tools.NewLLMRouteHandler(s.cli)
+		addTool(llmRoute.Tool(), llmRoute.Handle)
+
+		llmUsage := tools.NewLLMUsageHandler(s.cli)
+		addTool(llmUsage.Tool(), llmUsage.Handle)
+
+		llmBudget := tools.NewLLMBudgetHandler(s.cli)
+		addTool(llmBudget.Tool(), llmBudget.Handle)
 	}
 
 	return srv
