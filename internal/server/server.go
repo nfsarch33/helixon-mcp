@@ -119,6 +119,20 @@ func (s *Server) buildMCPServer() *mcpserver.MCPServer {
 		s.toolCount += 1
 	}
 
+	if s.cli != nil {
+		k8sOps := tools.NewK8sOpsHandler(s.cli)
+		addTool(k8sOps.Tool(), k8sOps.Handle)
+
+		tfOps := tools.NewTfOpsHandler(s.cli)
+		addTool(tfOps.Tool(), tfOps.Handle)
+
+		fleetOps := tools.NewFleetOpsHandler(s.cli)
+		addTool(fleetOps.Tool(), fleetOps.Handle)
+
+		grafanaOps := tools.NewGrafanaOpsHandler(s.cli)
+		addTool(grafanaOps.Tool(), grafanaOps.Handle)
+	}
+
 	return srv
 }
 
