@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,6 +13,7 @@ import (
 	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
 	"github.com/nfsarch33/ironclaw-mcp/internal/server"
 	"github.com/nfsarch33/ironclaw-mcp/internal/tools"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
 
@@ -56,7 +58,19 @@ func run() error {
 		cli = tools.NewExecCLIRunner(bin)
 	}
 
-	srv := server.New(client, prom, cli, logger, version)
+	gws := tools.NewExecCLIRunner("gws")
+
+	srv := server.New(client, prom, cli, gws, logger, version)
+
+	if cfg.PrometheusMetricsPort != "" {
+		go func() {
+			http.Handle("/metrics", promhttp.Handler())
+			logger.Info("starting metrics server", zap.String("port", cfg.PrometheusMetricsPort))
+			if err := http.ListenAndServe(":"+cfg.PrometheusMetricsPort, nil); err != nil {
+				logger.Error("metrics server failed", zap.Error(err))
+			}
+		}()
+	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()

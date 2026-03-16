@@ -43,6 +43,9 @@ type Config struct {
 	// PrometheusURL is the optional base URL for Prometheus metric queries.
 	// If empty, the ironclaw_get_metrics tool is not registered.
 	PrometheusURL string
+
+	// PrometheusMetricsPort is the optional port to expose /metrics.
+	PrometheusMetricsPort string
 }
 
 // MCCLIPath returns the path to mc-cli for CEO tools (crm_brief, morning_brief, etc.).
@@ -54,13 +57,14 @@ func MCCLIPath() string {
 // Load reads configuration from environment variables with sensible defaults.
 func Load() (*Config, error) {
 	cfg := &Config{
-		IronclawBaseURL:   envOrDefault("IRONCLAW_BASE_URL", "http://localhost:3000"),
-		APIKey:            os.Getenv("IRONCLAW_API_KEY"),
-		Transport:         envOrDefault("MCP_TRANSPORT", "stdio"),
-		SSEAddr:           envOrDefault("MCP_SSE_ADDR", ":8080"),
-		LogLevel:          envOrDefault("LOG_LEVEL", "info"),
-		AllowNonLocalhost: envOrDefault("IRONCLAW_ALLOW_NON_LOCALHOST", "") == "true",
-		PrometheusURL:     os.Getenv("PROMETHEUS_URL"),
+		IronclawBaseURL:       envOrDefault("IRONCLAW_BASE_URL", "http://localhost:3000"),
+		APIKey:                os.Getenv("IRONCLAW_API_KEY"),
+		Transport:             envOrDefault("MCP_TRANSPORT", "stdio"),
+		SSEAddr:               envOrDefault("MCP_SSE_ADDR", ":8080"),
+		LogLevel:              envOrDefault("LOG_LEVEL", "info"),
+		AllowNonLocalhost:     envOrDefault("IRONCLAW_ALLOW_NON_LOCALHOST", "") == "true",
+		PrometheusURL:         os.Getenv("PROMETHEUS_URL"),
+		PrometheusMetricsPort: os.Getenv("PROMETHEUS_METRICS_PORT"),
 	}
 
 	timeoutSec := envOrDefault("IRONCLAW_TIMEOUT_SECONDS", "30")

@@ -17,6 +17,7 @@ type Server struct {
 	client    tools.IronclawClient
 	prom      tools.PrometheusQuerier
 	cli       tools.CLIRunner
+	gws       tools.CLIRunner
 	logger    *zap.Logger
 	version   string
 	mcp       *mcpserver.MCPServer
@@ -24,12 +25,13 @@ type Server struct {
 }
 
 // New creates and configures a new MCP Server with all IronClaw tools registered.
-// prom and cli are optional; when set, the corresponding tools are registered.
-func New(client tools.IronclawClient, prom tools.PrometheusQuerier, cli tools.CLIRunner, logger *zap.Logger, version string) *Server {
+// prom, cli, and gws are optional; when set, the corresponding tools are registered.
+func New(client tools.IronclawClient, prom tools.PrometheusQuerier, cli tools.CLIRunner, gws tools.CLIRunner, logger *zap.Logger, version string) *Server {
 	s := &Server{
 		client:  client,
 		prom:    prom,
 		cli:     cli,
+		gws:     gws,
 		logger:  logger,
 		version: version,
 	}
@@ -110,6 +112,11 @@ func (s *Server) buildMCPServer() *mcpserver.MCPServer {
 		srv.AddTool(tools.NewFleetStatusHandler(s.cli).Tool(), tools.NewFleetStatusHandler(s.cli).Handle)
 		srv.AddTool(tools.NewLoadtestHandler(s.cli).Tool(), tools.NewLoadtestHandler(s.cli).Handle)
 		s.toolCount += 6
+	}
+
+	if s.gws != nil {
+		srv.AddTool(tools.NewGWSToolHandler(s.gws).Tool(), tools.NewGWSToolHandler(s.gws).Handle)
+		s.toolCount += 1
 	}
 
 	return srv

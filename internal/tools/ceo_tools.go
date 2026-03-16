@@ -3,8 +3,21 @@ package tools
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var (
+	gwsOperationsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "ironclaw_gws_operations_total",
+			Help: "Total number of Google Workspace CLI operations executed via MCP.",
+		},
+		[]string{"service", "method", "status"},
+	)
 )
 
 // CRMBriefHandler runs mc-cli crm prep-meeting for a contact.
@@ -226,5 +239,76 @@ func (h *LoadtestHandler) Handle(ctx context.Context, req mcp.CallToolRequest) (
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("loadtest: %v\n%s", err, out)), nil
 	}
+	return mcp.NewToolResultText(out), nil
+}
+
+// GWSToolHandler runs gws cli commands for Workspace integration.
+type GWSToolHandler struct {
+	gws CLIRunner
+}
+
+// NewGWSToolHandler creates a new GWSToolHandler.
+func NewGWSToolHandler(gws CLIRunner) *GWSToolHandler {
+	return &GWSToolHandler{gws: gws}
+}
+
+// Tool returns the ironclaw_gws_run tool definition.
+func (h *GWSToolHandler) Tool() mcp.Tool {
+	return mcp.NewTool(
+		"ironclaw_gws_run",
+		mcp.WithDescription("Run Google Workspace commands via the gws CLI. e.g. service='calendar', resource='events', method='list', params='{\"timeMin\":\"...\"}'."),
+		mcp.WithString("service", mcp.Required(), mcp.Description("Workspace service (e.g. calendar, gmail, drive)")),
+		mcp.WithString("resource", mcp.Required(), mcp.Description("Resource (e.g. events, users.messages, files)")),
+		mcp.WithString("method", mcp.Required(), mcp.Description("Method (e.g. list, get, insert, create)")),
+		mcp.WithString("params", mcp.Description("JSON params string (passed to --params or --json depending on method)")),
+		mcp.WithString("sub_resource", mcp.Description("Optional sub-resource (e.g. if resource is 'users' and sub_resource is 'messages')")),
+	)
+}
+
+// Handle runs gws <service> <resource> [sub-resource] <method> [--params/--json <params>].
+func (h *GWSToolHandler) Handle(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	if h.gws == nil {
+		return mcp.NewToolResultError("gws cli not configured (CLIRunner nil)"), nil
+	}
+	service, err := requiredString(req, "service")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	res, err := requiredString(req, "resource")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	method, err := requiredString(req, "method")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	args := []string{service}
+	if strings.Contains(res, ".") {
+		args = append(args, strings.Split(res, ".")...)
+	} else {
+		args = append(args, res)
+	}
+
+	if sub := optionalString(req, "sub_resource"); sub != "" {
+		args = append(args, sub)
+	}
+	args = append(args, method)
+
+	if p := optionalString(req, "params"); p != "" {
+		if method == "insert" || method == "create" || method == "update" || method == "patch" || method == "send" {
+			args = append(args, "--json", p)
+		} else {
+			args = append(args, "--params", p)
+		}
+	}
+
+	out, err := h.gws.Run(ctx, args...)
+	if err != nil {
+		gwsOperationsTotal.WithLabelValues(service, method, "error").Inc()
+		return mcp.NewToolResultError(fmt.Sprintf("gws command failed: %v\n%s", err, out)), nil
+	}
+
+	gwsOperationsTotal.WithLabelValues(service, method, "success").Inc()
 	return mcp.NewToolResultText(out), nil
 }

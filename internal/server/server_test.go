@@ -78,7 +78,7 @@ func (m *mockCLI) Run(ctx context.Context, args ...string) (string, error) {
 
 func TestNew_RegistersBaseTools(t *testing.T) {
 	logger := zap.NewNop()
-	srv := New(new(mockClient), nil, nil, logger, "0.1.0")
+	srv := New(new(mockClient), nil, nil, nil, logger, "0.1.0")
 	count := srv.RegisteredToolCount()
 	// 14 core + 10 research (scrape, pdf, search, store, pipeline, transcript,
 	// extract, crawl, deakin, assessments) = 24 (no prometheus = no get_metrics)
@@ -87,7 +87,7 @@ func TestNew_RegistersBaseTools(t *testing.T) {
 
 func TestNew_WithPrometheus_RegistersMetricsTool(t *testing.T) {
 	logger := zap.NewNop()
-	srv := New(new(mockClient), new(mockProm), nil, logger, "0.1.0")
+	srv := New(new(mockClient), new(mockProm), nil, nil, logger, "0.1.0")
 	count := srv.RegisteredToolCount()
 	// 24 base + get_metrics = 25
 	assert.Equal(t, 25, count)
@@ -95,7 +95,7 @@ func TestNew_WithPrometheus_RegistersMetricsTool(t *testing.T) {
 
 func TestNew_WithCLI_RegistersCEOTools(t *testing.T) {
 	logger := zap.NewNop()
-	srv := New(new(mockClient), nil, &mockCLI{}, logger, "0.1.0")
+	srv := New(new(mockClient), nil, &mockCLI{}, nil, logger, "0.1.0")
 	count := srv.RegisteredToolCount()
 	// 24 base + 6 CEO tools = 30
 	assert.Equal(t, 30, count)
@@ -103,15 +103,20 @@ func TestNew_WithCLI_RegistersCEOTools(t *testing.T) {
 
 func TestNew_WithAll_RegistersAllTools(t *testing.T) {
 	logger := zap.NewNop()
-	srv := New(new(mockClient), new(mockProm), &mockCLI{}, logger, "0.1.0")
+	srv := New(new(mockClient), new(mockProm), &mockCLI{}, &mockCLI{}, logger, "0.1.0")
 	count := srv.RegisteredToolCount()
+<<<<<<< HEAD
 	// 24 base + get_metrics + 6 CEO tools = 31
 	assert.Equal(t, 31, count)
+=======
+	// 14 base + get_metrics + 6 CEO tools + 1 GWS tool = 22
+	assert.Equal(t, 22, count)
+>>>>>>> 70b0a55 (feat: MVP 52-60 Google Workspace integration (gws tool & prometheus metrics))
 }
 
 func TestRun_UnknownTransport(t *testing.T) {
 	logger := zap.NewNop()
-	srv := New(new(mockClient), nil, nil, logger, "0.1.0")
+	srv := New(new(mockClient), nil, nil, nil, logger, "0.1.0")
 	err := srv.Run(context.Background(), "grpc")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown transport")
@@ -119,7 +124,7 @@ func TestRun_UnknownTransport(t *testing.T) {
 
 func TestRun_SSENotImplemented(t *testing.T) {
 	logger := zap.NewNop()
-	srv := New(new(mockClient), nil, nil, logger, "0.1.0")
+	srv := New(new(mockClient), nil, nil, nil, logger, "0.1.0")
 	err := srv.Run(context.Background(), "sse")
 	assert.Error(t, err)
 }
