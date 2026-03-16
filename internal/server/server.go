@@ -4,13 +4,13 @@ package server
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	mcpserver "github.com/mark3labs/mcp-go/server"
 	"github.com/nfsarch33/ironclaw-mcp/internal/tools"
-	"go.uber.org/zap"
 )
 
 // Server wraps the MCP server and its dependencies.
@@ -19,7 +19,7 @@ type Server struct {
 	prom      tools.PrometheusQuerier
 	cli       tools.CLIRunner
 	gws       tools.CLIRunner
-	logger    *zap.Logger
+	logger    *slog.Logger
 	version   string
 	mcp       *mcpserver.MCPServer
 	sse       *mcpserver.SSEServer
@@ -28,7 +28,10 @@ type Server struct {
 
 // New creates and configures a new MCP Server with all IronClaw tools registered.
 // prom, cli, and gws are optional; when set, the corresponding tools are registered.
-func New(client tools.IronclawClient, prom tools.PrometheusQuerier, cli tools.CLIRunner, gws tools.CLIRunner, logger *zap.Logger, version string) *Server {
+func New(client tools.IronclawClient, prom tools.PrometheusQuerier, cli tools.CLIRunner, gws tools.CLIRunner, logger *slog.Logger, version string) *Server {
+	if logger == nil {
+		logger = slog.Default()
+	}
 	s := &Server{
 		client:  client,
 		prom:    prom,
@@ -155,7 +158,7 @@ func (s *Server) buildMCPServer() *mcpserver.MCPServer {
 
 // Run starts the MCP server using the configured transport.
 func (s *Server) Run(ctx context.Context, transport string) error {
-	s.logger.Info("MCP server ready", zap.String("transport", transport))
+	s.logger.Info("MCP server ready", "transport", transport)
 	switch transport {
 	case "stdio":
 		stdioSrv := mcpserver.NewStdioServer(s.mcp)
@@ -180,7 +183,7 @@ func (s *Server) runSSE(ctx context.Context) error {
 		mcpserver.WithKeepAlive(true),
 	)
 	s.sse = sseSrv
-	s.logger.Info("SSE server starting", zap.String("addr", addr))
+	s.logger.Info("SSE server starting", "addr", addr)
 
 	mux := http.NewServeMux()
 	mux.Handle("/", sseSrv)

@@ -2,14 +2,19 @@ package server
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"go.uber.org/zap"
 )
+
+func discardLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
 
 type mockClient struct{ mock.Mock }
 
@@ -78,8 +83,7 @@ func (m *mockCLI) Run(ctx context.Context, args ...string) (string, error) {
 }
 
 func TestNew_RegistersBaseTools(t *testing.T) {
-	logger := zap.NewNop()
-	srv := New(new(mockClient), nil, nil, nil, logger, "0.1.0")
+	srv := New(new(mockClient), nil, nil, nil, discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
 	// 14 core + 10 research (scrape, pdf, search, store, pipeline, transcript,
 	// extract, crawl, deakin, assessments) = 24 (no prometheus = no get_metrics)
@@ -87,40 +91,35 @@ func TestNew_RegistersBaseTools(t *testing.T) {
 }
 
 func TestNew_WithPrometheus_RegistersMetricsTool(t *testing.T) {
-	logger := zap.NewNop()
-	srv := New(new(mockClient), new(mockProm), nil, nil, logger, "0.1.0")
+	srv := New(new(mockClient), new(mockProm), nil, nil, discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
 	// 24 base + get_metrics = 25
 	assert.Equal(t, 25, count)
 }
 
 func TestNew_WithCLI_RegistersCEOTools(t *testing.T) {
-	logger := zap.NewNop()
-	srv := New(new(mockClient), nil, &mockCLI{}, nil, logger, "0.1.0")
+	srv := New(new(mockClient), nil, &mockCLI{}, nil, discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
 	// 24 base + 6 CEO + 9 dual-ops (k8s,tf,fleet,grafana,governance,timeline,llm_route,llm_usage,llm_budget) = 39
 	assert.Equal(t, 39, count)
 }
 
 func TestNew_WithAll_RegistersAllTools(t *testing.T) {
-	logger := zap.NewNop()
-	srv := New(new(mockClient), new(mockProm), &mockCLI{}, &mockCLI{}, logger, "0.1.0")
+	srv := New(new(mockClient), new(mockProm), &mockCLI{}, &mockCLI{}, discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
 	// 24 base + get_metrics + 6 CEO + 1 GWS + 9 dual-ops = 41
 	assert.Equal(t, 41, count)
 }
 
 func TestRun_UnknownTransport(t *testing.T) {
-	logger := zap.NewNop()
-	srv := New(new(mockClient), nil, nil, nil, logger, "0.1.0")
+	srv := New(new(mockClient), nil, nil, nil, discardLogger(), "0.1.0")
 	err := srv.Run(context.Background(), "grpc")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown transport")
 }
 
 func TestRun_SSE_StartsAndStops(t *testing.T) {
-	logger := zap.NewNop()
-	srv := New(new(mockClient), nil, nil, nil, logger, "0.1.0")
+	srv := New(new(mockClient), nil, nil, nil, discardLogger(), "0.1.0")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Setenv("MCP_SSE_ADDR", ":0")

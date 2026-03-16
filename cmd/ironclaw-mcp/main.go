@@ -4,9 +4,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/nfsarch33/ironclaw-mcp/internal/config"
@@ -14,7 +16,6 @@ import (
 	"github.com/nfsarch33/ironclaw-mcp/internal/server"
 	"github.com/nfsarch33/ironclaw-mcp/internal/tools"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.uber.org/zap"
 )
 
 const version = "0.1.0"
@@ -32,17 +33,13 @@ func run() error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	logger, err := buildLogger(cfg.LogLevel)
-	if err != nil {
-		return fmt.Errorf("building logger: %w", err)
-	}
-	defer logger.Sync() //nolint:errcheck
+	logger := buildLogger(cfg.LogLevel)
 
 	logger.Info("starting ironclaw-mcp",
-		zap.String("version", version),
-		zap.String("ironclaw_url", cfg.IronclawBaseURL),
-		zap.String("transport", cfg.Transport),
-		zap.Bool("auth_configured", cfg.APIKey != ""),
+		"version", version,
+		"ironclaw_url", cfg.IronclawBaseURL,
+		"transport", cfg.Transport,
+		"auth_configured", cfg.APIKey != "",
 	)
 
 	client := ironclaw.NewClient(cfg.IronclawBaseURL, cfg.APIKey, cfg.Timeout)
@@ -50,7 +47,7 @@ func run() error {
 	var prom tools.PrometheusQuerier
 	if cfg.PrometheusURL != "" {
 		prom = tools.NewHTTPPrometheusQuerier(cfg.PrometheusURL)
-		logger.Info("prometheus enabled", zap.String("url", cfg.PrometheusURL))
+		logger.Info("prometheus enabled", "url", cfg.PrometheusURL)
 	}
 
 	var cli tools.CLIRunner
@@ -65,9 +62,9 @@ func run() error {
 	if cfg.PrometheusMetricsPort != "" {
 		go func() {
 			http.Handle("/metrics", promhttp.Handler())
-			logger.Info("starting metrics server", zap.String("port", cfg.PrometheusMetricsPort))
+			logger.Info("starting metrics server", "port", cfg.PrometheusMetricsPort)
 			if err := http.ListenAndServe(":"+cfg.PrometheusMetricsPort, nil); err != nil {
-				logger.Error("metrics server failed", zap.Error(err))
+				logger.Error("metrics server failed", "error", err)
 			}
 		}()
 	}
@@ -78,22 +75,17 @@ func run() error {
 	return srv.Run(ctx, cfg.Transport)
 }
 
-func buildLogger(level string) (*zap.Logger, error) {
-	var cfg zap.Config
-	if level == "debug" {
-		cfg = zap.NewDevelopmentConfig()
-	} else {
-		cfg = zap.NewProductionConfig()
-	}
-	switch level {
+func buildLogger(level string) *slog.Logger {
+	var slevel slog.Level
+	switch strings.ToLower(strings.TrimSpace(level)) {
 	case "debug":
-		cfg.Level.SetLevel(zap.DebugLevel)
-	case "warn":
-		cfg.Level.SetLevel(zap.WarnLevel)
+		slevel = slog.LevelDebug
+	case "warn", "warning":
+		slevel = slog.LevelWarn
 	case "error":
-		cfg.Level.SetLevel(zap.ErrorLevel)
+		slevel = slog.LevelError
 	default:
-		cfg.Level.SetLevel(zap.InfoLevel)
+		slevel = slog.LevelInfo
 	}
-	return cfg.Build()
+	return slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slevel}))
 }
