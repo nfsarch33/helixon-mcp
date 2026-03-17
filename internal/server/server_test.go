@@ -100,15 +100,15 @@ func TestNew_WithPrometheus_RegistersMetricsTool(t *testing.T) {
 func TestNew_WithCLI_RegistersCEOTools(t *testing.T) {
 	srv := New(new(mockClient), nil, &mockCLI{}, nil, discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
-	// 24 base + 6 CEO + 9 dual-ops (k8s,tf,fleet,grafana,governance,timeline,llm_route,llm_usage,llm_budget) = 39
-	assert.Equal(t, 39, count)
+	// 24 base + 6 CEO + 9 dual-ops + 11 ops (doctor,status,install,deploy,logs,spawn_full,list_agents,stop,gpu,cost,memory) + 11 extended (fleet,routine,a2a,snapshot,recover,workspace,crm,skills,ceo_orchestrate,job,export_dashboards) = 61
+	assert.Equal(t, 61, count)
 }
 
 func TestNew_WithAll_RegistersAllTools(t *testing.T) {
 	srv := New(new(mockClient), new(mockProm), &mockCLI{}, &mockCLI{}, discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
-	// 24 base + get_metrics + 6 CEO + 1 GWS + 9 dual-ops = 41
-	assert.Equal(t, 41, count)
+	// 24 base + get_metrics + 6 CEO + 1 GWS + 9 dual-ops + 22 new ops/extended = 63
+	assert.Equal(t, 63, count)
 }
 
 func TestRun_UnknownTransport(t *testing.T) {

@@ -125,6 +125,32 @@ func (s *Server) buildMCPServer() *mcpserver.MCPServer {
 	}
 
 	if s.cli != nil {
+		// Sprint 68: Core ops MCP tools
+		addTool(tools.NewDoctorHandler(s.cli).Tool(), tools.NewDoctorHandler(s.cli).Handle)
+		addTool(tools.NewStatusHandler(s.cli).Tool(), tools.NewStatusHandler(s.cli).Handle)
+		addTool(tools.NewInstallHandler(s.cli).Tool(), tools.NewInstallHandler(s.cli).Handle)
+		addTool(tools.NewDeployHandler(s.cli).Tool(), tools.NewDeployHandler(s.cli).Handle)
+		addTool(tools.NewLogsHandler(s.cli).Tool(), tools.NewLogsHandler(s.cli).Handle)
+		addTool(tools.NewSpawnFullHandler(s.cli).Tool(), tools.NewSpawnFullHandler(s.cli).Handle)
+		addTool(tools.NewListAgentsHandler(s.cli).Tool(), tools.NewListAgentsHandler(s.cli).Handle)
+		addTool(tools.NewStopAgentHandler(s.cli).Tool(), tools.NewStopAgentHandler(s.cli).Handle)
+		addTool(tools.NewGPUStatusHandler(s.cli).Tool(), tools.NewGPUStatusHandler(s.cli).Handle)
+		addTool(tools.NewCostSummaryHandler(s.cli).Tool(), tools.NewCostSummaryHandler(s.cli).Handle)
+		addTool(tools.NewMemoryStatsHandler(s.cli).Tool(), tools.NewMemoryStatsHandler(s.cli).Handle)
+
+		// Sprint 69: Extended ops MCP tools
+		addTool(tools.NewFleetHandler(s.cli).Tool(), tools.NewFleetHandler(s.cli).Handle)
+		addTool(tools.NewRoutineHandler(s.cli).Tool(), tools.NewRoutineHandler(s.cli).Handle)
+		addTool(tools.NewA2AFullHandler(s.cli).Tool(), tools.NewA2AFullHandler(s.cli).Handle)
+		addTool(tools.NewSnapshotHandler(s.cli).Tool(), tools.NewSnapshotHandler(s.cli).Handle)
+		addTool(tools.NewRecoverHandler(s.cli).Tool(), tools.NewRecoverHandler(s.cli).Handle)
+		addTool(tools.NewWorkspaceHandler(s.cli).Tool(), tools.NewWorkspaceHandler(s.cli).Handle)
+		addTool(tools.NewCRMFullHandler(s.cli).Tool(), tools.NewCRMFullHandler(s.cli).Handle)
+		addTool(tools.NewSkillsHandler(s.cli).Tool(), tools.NewSkillsHandler(s.cli).Handle)
+		addTool(tools.NewCEOOrchestrateHandler(s.cli).Tool(), tools.NewCEOOrchestrateHandler(s.cli).Handle)
+		addTool(tools.NewJobOpsHandler(s.cli).Tool(), tools.NewJobOpsHandler(s.cli).Handle)
+		addTool(tools.NewExportDashboardsHandler(s.cli).Tool(), tools.NewExportDashboardsHandler(s.cli).Handle)
+
 		k8sOps := tools.NewK8sOpsHandler(s.cli)
 		addTool(k8sOps.Tool(), k8sOps.Handle)
 
