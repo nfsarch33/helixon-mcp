@@ -10,6 +10,20 @@ env:
   GO_VERSION: "1.23"
 
 jobs:
+  semver-check:
+    name: Semver Validation
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Validate semver tag
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          if ! echo "$TAG" | grep -qE '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[a-zA-Z0-9.]+)?(\+[a-zA-Z0-9.]+)?$'; then
+            echo "Tag '$TAG' does not follow semantic versioning (vMAJOR.MINOR.PATCH)"
+            exit 1
+          fi
+          echo "Tag '$TAG' is valid semver"
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
