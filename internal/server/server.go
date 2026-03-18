@@ -104,6 +104,18 @@ func (s *Server) buildMCPServer() *mcpserver.MCPServer {
 	addTool(research.DeakinTool(), research.HandleDeakin)
 	addTool(research.AssessmentsTool(), research.HandleAssessments)
 
+	uiauto := tools.NewUIAutoHandler()
+	addTool(uiauto.NavigateTool(), uiauto.HandleNavigate)
+	addTool(uiauto.DiscoverTool(), uiauto.HandleDiscover)
+	addTool(uiauto.HealTool(), uiauto.HandleHeal)
+	addTool(uiauto.VerifyTool(), uiauto.HandleVerify)
+
+	evolver := tools.NewEvolverHandler()
+	addTool(evolver.StatusTool(), evolver.HandleStatus)
+	addTool(evolver.ProposeTool(), evolver.HandlePropose)
+	addTool(evolver.ValidateTool(), evolver.HandleValidate)
+	addTool(evolver.PromoteTool(), evolver.HandlePromote)
+
 	if s.prom != nil {
 		getMetrics := tools.NewGetMetricsHandler(s.prom)
 		addTool(getMetrics.Tool(), getMetrics.Handle)

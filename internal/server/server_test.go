@@ -85,30 +85,29 @@ func (m *mockCLI) Run(ctx context.Context, args ...string) (string, error) {
 func TestNew_RegistersBaseTools(t *testing.T) {
 	srv := New(new(mockClient), nil, nil, nil, discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
-	// 14 core + 10 research (scrape, pdf, search, store, pipeline, transcript,
-	// extract, crawl, deakin, assessments) = 24 (no prometheus = no get_metrics)
-	assert.Equal(t, 24, count)
+	// 14 core + 10 research + 4 uiauto + 4 evolver = 32 (no prometheus = no get_metrics)
+	assert.Equal(t, 32, count)
 }
 
 func TestNew_WithPrometheus_RegistersMetricsTool(t *testing.T) {
 	srv := New(new(mockClient), new(mockProm), nil, nil, discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
-	// 24 base + get_metrics = 25
-	assert.Equal(t, 25, count)
+	// 32 base + get_metrics = 33
+	assert.Equal(t, 33, count)
 }
 
 func TestNew_WithCLI_RegistersCEOTools(t *testing.T) {
 	srv := New(new(mockClient), nil, &mockCLI{}, nil, discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
-	// 24 base + 6 CEO + 9 dual-ops + 11 ops (doctor,status,install,deploy,logs,spawn_full,list_agents,stop,gpu,cost,memory) + 11 extended (fleet,routine,a2a,snapshot,recover,workspace,crm,skills,ceo_orchestrate,job,export_dashboards) = 61
-	assert.Equal(t, 61, count)
+	// 32 base + 6 CEO + 9 dual-ops + 11 ops + 11 extended = 69
+	assert.Equal(t, 69, count)
 }
 
 func TestNew_WithAll_RegistersAllTools(t *testing.T) {
 	srv := New(new(mockClient), new(mockProm), &mockCLI{}, &mockCLI{}, discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
-	// 24 base + get_metrics + 6 CEO + 1 GWS + 9 dual-ops + 22 new ops/extended = 63
-	assert.Equal(t, 63, count)
+	// 32 base + get_metrics + 6 CEO + 1 GWS + 9 dual-ops + 22 new ops/extended = 71
+	assert.Equal(t, 71, count)
 }
 
 func TestRun_UnknownTransport(t *testing.T) {
