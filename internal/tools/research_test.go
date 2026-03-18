@@ -237,22 +237,88 @@ func TestResearchHandler_HandleStore_MissingContent(t *testing.T) {
 	assert.True(t, result.IsError)
 }
 
-func TestResearchHandler_HandlePipeline_Unsupported(t *testing.T) {
+func TestResearchHandler_PipelineTool_Definition(t *testing.T) {
 	h := NewResearchHandler()
+	tool := h.PipelineTool()
+	assert.Equal(t, "ironclaw_research_pipeline", tool.Name)
+	assert.Contains(t, tool.Description, "10-stage")
+}
+
+func TestResearchHandler_HandlePipeline_Success(t *testing.T) {
+	h := &ResearchHandler{
+		run: fakeRunner("=== Production Run Results ===\nMMH250 AT1: HD (85.2)\nTotal: 1 succeeded, 0 failed", nil),
+		bin: "research-agent",
+	}
+	result, err := h.HandlePipeline(context.Background(), callTool(t, map[string]any{}))
+	require.NoError(t, err)
+	assert.False(t, result.IsError)
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "Production Run Results")
+}
+
+func TestResearchHandler_HandlePipeline_WithAllOptions(t *testing.T) {
+	var capturedArgs []string
+	h := &ResearchHandler{
+		run: func(_ context.Context, _, _ string, _ string, args ...string) (string, error) {
+			capturedArgs = args
+			return "ok", nil
+		},
+		bin: "research-agent",
+	}
+
+	_, err := h.HandlePipeline(context.Background(), callTool(t, map[string]any{
+		"unit":          "MMH250,HPS203",
+		"rubric":        "/tmp/rubric.yaml",
+		"model":         "qwen3.5-27b",
+		"llm_endpoint":  "http://localhost:8080/v1",
+		"output_dir":    "/tmp/essays",
+		"core_pipeline": "true",
+	}))
+	require.NoError(t, err)
+
+	assert.Contains(t, capturedArgs, "produce")
+	assert.Contains(t, capturedArgs, "--unit")
+	assert.Contains(t, capturedArgs, "MMH250")
+	assert.Contains(t, capturedArgs, "HPS203")
+	assert.Contains(t, capturedArgs, "--rubric")
+	assert.Contains(t, capturedArgs, "/tmp/rubric.yaml")
+	assert.Contains(t, capturedArgs, "--model")
+	assert.Contains(t, capturedArgs, "qwen3.5-27b")
+	assert.Contains(t, capturedArgs, "--llm-endpoint")
+	assert.Contains(t, capturedArgs, "http://localhost:8080/v1")
+	assert.Contains(t, capturedArgs, "--output-dir")
+	assert.Contains(t, capturedArgs, "/tmp/essays")
+	assert.Contains(t, capturedArgs, "--core-pipeline")
+}
+
+func TestResearchHandler_HandlePipeline_Error(t *testing.T) {
+	h := &ResearchHandler{
+		run: fakeRunner("", fmt.Errorf("LLM endpoint unreachable")),
+		bin: "research-agent",
+	}
 	result, err := h.HandlePipeline(context.Background(), callTool(t, map[string]any{
-		"pipeline_file": "/path/to/pipeline.yml",
+		"unit": "MMH250",
 	}))
 	require.NoError(t, err)
 	assert.True(t, result.IsError)
-	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "not yet implemented")
+	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "pipeline failed")
 }
 
-func TestResearchHandler_HandlePipeline_UnsupportedNoArgs(t *testing.T) {
-	h := NewResearchHandler()
-	result, err := h.HandlePipeline(context.Background(), callTool(t, map[string]any{}))
+func TestResearchHandler_HandlePipeline_SingleUnit(t *testing.T) {
+	var capturedArgs []string
+	h := &ResearchHandler{
+		run: func(_ context.Context, _, _ string, _ string, args ...string) (string, error) {
+			capturedArgs = args
+			return "ok", nil
+		},
+		bin: "research-agent",
+	}
+
+	_, err := h.HandlePipeline(context.Background(), callTool(t, map[string]any{
+		"unit": "MMH250",
+	}))
 	require.NoError(t, err)
-	assert.True(t, result.IsError)
-	assert.Contains(t, result.Content[0].(mcp.TextContent).Text, "not yet implemented")
+	assert.Contains(t, capturedArgs, "--unit")
+	assert.Contains(t, capturedArgs, "MMH250")
 }
 
 // --- Transcript tool tests ---

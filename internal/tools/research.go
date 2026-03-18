@@ -281,21 +281,75 @@ func (h *ResearchHandler) HandleStore(ctx context.Context, req mcp.CallToolReque
 	return mcp.NewToolResultText(out), nil
 }
 
-// PipelineTool returns the MCP tool for running research pipelines.
+// PipelineTool returns the MCP tool for running the academic production pipeline.
 func (h *ResearchHandler) PipelineTool() mcp.Tool {
 	return mcp.NewTool(
 		"ironclaw_research_pipeline",
-		mcp.WithDescription("Run a research pipeline defined in YAML. Pipelines execute concurrent stages with dependency ordering."),
-		mcp.WithString("pipeline_file",
-			mcp.Required(),
-			mcp.Description("Path to the pipeline YAML file."),
+		mcp.WithDescription("Run the 10-stage academic production pipeline (analyze, research, outline, write, integrity, review, socratic, revise, polish, finalize) for registered university units. Generates rubric-evaluated essays from scraped course materials."),
+		mcp.WithString("unit",
+			mcp.Description("Comma-separated unit codes to process (e.g. 'MMH250,HPS203'). Omit for all registered units."),
+		),
+		mcp.WithString("rubric",
+			mcp.Description("Path to rubric file (JSON, YAML, Markdown, or HTML). Applied to all units."),
+		),
+		mcp.WithString("model",
+			mcp.Description("LLM model name. Default: LLM_MODEL env or qwen3.5-27b."),
+		),
+		mcp.WithString("llm_endpoint",
+			mcp.Description("LLM endpoint URL. Default: LLM_ENDPOINT env or http://localhost:8080/v1."),
+		),
+		mcp.WithString("output_dir",
+			mcp.Description("Base output directory for pipeline outputs."),
+		),
+		mcp.WithString("core_pipeline",
+			mcp.Description("If 'true', use 7-stage core pipeline (skip Analyze, Outline, Polish). Default: false."),
 		),
 	)
 }
 
-// HandlePipeline is currently unsupported -- the CLI has no 'pipeline' subcommand yet.
-func (h *ResearchHandler) HandlePipeline(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return mcp.NewToolResultError("pipeline subcommand is not yet implemented in the research-agent CLI; planned for Sprint R20"), nil
+// HandlePipeline runs research-agent produce with the provided parameters.
+func (h *ResearchHandler) HandlePipeline(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args := []string{"produce"}
+
+	if unit, _ := req.Params.Arguments["unit"].(string); unit != "" {
+		for _, u := range splitCSV(unit) {
+			args = append(args, "--unit", u)
+		}
+	}
+	if rubric, _ := req.Params.Arguments["rubric"].(string); rubric != "" {
+		args = append(args, "--rubric", rubric)
+	}
+	if model, _ := req.Params.Arguments["model"].(string); model != "" {
+		args = append(args, "--model", model)
+	}
+	if ep, _ := req.Params.Arguments["llm_endpoint"].(string); ep != "" {
+		args = append(args, "--llm-endpoint", ep)
+	}
+	if outDir, _ := req.Params.Arguments["output_dir"].(string); outDir != "" {
+		args = append(args, "--output-dir", outDir)
+	}
+	if cp, _ := req.Params.Arguments["core_pipeline"].(string); cp == "true" {
+		args = append(args, "--core-pipeline")
+	}
+
+	out, err := h.run(ctx, "", "", h.bin, args...)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("pipeline failed: %v\n%s", err, out)), nil
+	}
+	return mcp.NewToolResultText(out), nil
+}
+
+// splitCSV splits a comma-separated string into trimmed non-empty parts.
+func splitCSV(s string) []string {
+	parts := strings.Split(s, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	return result
 }
 
 // TranscriptTool returns the MCP tool for media download and transcription.
