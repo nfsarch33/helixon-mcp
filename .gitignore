@@ -1,2 +1,12 @@
 bin/
 ironclaw-mcp
+
+# Allow Dart entry-point sources under flutter/mc-client/bin/ (the
+# repo-wide bin/ rule above hides Go build artefacts; Dart packages
+# put their CLI entry points in bin/ as a convention).
+!flutter/mc-client/bin/
+!flutter/mc-client/bin/**
+
+# Dart build artefacts: never check these in.
+flutter/mc-client/.dart_tool/
+flutter/mc-client/build/
