@@ -1,0 +1,30 @@
+[constraints]
+max_cycles = 0
+max_coupling = "B"
+max_cc = 60
+no_god_files = true
+
+[[layers]]
+name = "cmd"
+paths = ["cmd/*"]
+order = 0
+
+[[layers]]
+name = "server"
+paths = ["internal/server/*"]
+order = 1
+
+[[layers]]
+name = "tools"
+paths = ["internal/tools/*"]
+order = 2
+
+[[layers]]
+name = "gateway_client"
+paths = ["internal/ironclaw/*", "internal/config/*"]
+order = 3
+
+[[boundaries]]
+from = "internal/ironclaw/*"
+to = "internal/tools/*"
+reason = "Gateway client must remain generic and independent of MCP tool handlers."
