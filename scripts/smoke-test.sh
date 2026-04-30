@@ -3,7 +3,7 @@
 #
 # Usage:
 #   ./scripts/smoke-test.sh           # default: health + one stateful tool
-#   ./scripts/smoke-test.sh --all     # test all 15 tools with deterministic payloads
+#   ./scripts/smoke-test.sh --all     # test all default tools with deterministic payloads
 #   ./scripts/smoke-test.sh --report  # output JSON results (combinable with --all)
 
 set -euo pipefail
@@ -16,7 +16,7 @@ for arg in "$@"; do
     --report) SMOKE_REPORT=1 ;;
     --help|-h)
       echo "Usage: $0 [--all] [--report]"
-      echo "  --all     Test all 15 MCP tools with deterministic payloads"
+      echo "  --all     Test all default MCP tools with deterministic payloads"
       echo "  --report  Output JSON test results to stdout"
       exit 0
       ;;
@@ -31,7 +31,7 @@ STATEFUL_TOOL="${SMOKE_STATEFUL_TOOL:-ironclaw_list_jobs}"
 CHAT_MESSAGE="${SMOKE_CHAT_MESSAGE:-Smoke test: reply with a short acknowledgement.}"
 TIMEOUT_SECONDS="${SMOKE_TIMEOUT_SECONDS:-45}"
 ROUTER_URL="${SMOKE_ROUTER_URL:-http://127.0.0.1:8080}"
-EXPECT_MODEL="${SMOKE_EXPECT_MODEL:-qwen3.5-27b}"
+EXPECT_MODEL="${SMOKE_EXPECT_MODEL:-}"
 REQUIRE_ROUTER="${SMOKE_REQUIRE_ROUTER:-auto}"
 
 health_url="${BASE_URL%/}/api/health"
@@ -102,7 +102,7 @@ if [[ "$require_router" -eq 1 ]]; then
     echo "FAIL: Router model list not reachable at $router_models_url."
     exit 1
   fi
-  if ! python3 - "$EXPECT_MODEL" /tmp/ironclaw-smoke-router-models.json <<'PY'
+  if [[ -n "$EXPECT_MODEL" ]] && ! python3 - "$EXPECT_MODEL" /tmp/ironclaw-smoke-router-models.json <<'PY'
 import json
 import sys
 
@@ -115,7 +115,7 @@ if expected not in models:
 PY
   then
     echo "FAIL: Router is healthy but expected model '$EXPECT_MODEL' is not listed."
-    echo "Verify the local 27B upstream is registered and healthy."
+    echo "Verify the configured model upstream is registered and healthy."
     exit 1
   fi
   echo "OK: Router health and model inventory look good"
@@ -298,7 +298,6 @@ all_expected = {
     "ironclaw_list_tools",
     "ironclaw_stack_status",
     "ironclaw_spawn_agent",
-    "ironclaw_reviewed_push",
     "ironclaw_send_task",
     "ironclaw_agent_status",
 }
@@ -319,7 +318,7 @@ if missing:
 
 if smoke_all:
     if not smoke_report:
-        print(f"Testing all {len(all_expected)} tools (+ ironclaw_get_metrics if available):")
+        print(f"Testing all {len(all_expected)} default tools (+ optional adjuncts if available):")
 
     test_tool("ironclaw_health", {})
     test_tool("ironclaw_list_jobs", {})
@@ -331,20 +330,17 @@ if smoke_all:
     test_tool("ironclaw_stack_status", {})
     test_tool("ironclaw_agent_status", {})
     test_tool("ironclaw_send_task", {"message": "smoke-test: acknowledge this task"})
-    test_tool("ironclaw_spawn_agent", {"name": "smoke-test-agent", "model": "qwen3.5-0.8b", "tier": "fast"})
+    test_tool("ironclaw_spawn_agent", {"name": "smoke-test-agent", "model": "example-model", "tier": "fast"})
 
     # These tools need special handling:
     # - ironclaw_chat requires LLM round-trip (slow, may timeout)
     # - ironclaw_delete_routine is destructive
-    # - ironclaw_reviewed_push requires a git repo
     if not smoke_report:
         print("  ironclaw_chat: skipped (requires LLM round-trip)")
         print("  ironclaw_delete_routine: skipped (destructive)")
-        print("  ironclaw_reviewed_push: skipped (requires git workdir)")
     report_results.extend([
         {"tool": "ironclaw_chat", "status": "skipped", "reason": "requires LLM round-trip"},
         {"tool": "ironclaw_delete_routine", "status": "skipped", "reason": "destructive"},
-        {"tool": "ironclaw_reviewed_push", "status": "skipped", "reason": "requires git workdir"},
     ])
 
     if "ironclaw_get_metrics" in tools:
@@ -427,14 +423,14 @@ fi
 echo "  - MCP initialize"
 echo "  - MCP tools/list"
 if [[ "$SMOKE_ALL" -eq 1 ]]; then
-  echo "  - All 15 MCP tools (with deterministic payloads)"
+  echo "  - All default MCP tools (with deterministic payloads)"
 else
   echo "  - ironclaw_health"
   echo "  - $STATEFUL_TOOL"
 fi
 echo
 echo "Tips:"
-echo "  - Use --all to test all 15 tools with deterministic payloads"
+echo "  - Use --all to test all default tools with deterministic payloads"
 echo "  - Use --report to get JSON output (combinable with --all)"
 echo "  - Use SMOKE_STATEFUL_TOOL=ironclaw_chat for the full local LLM round-trip"
 echo "  - Set SMOKE_REQUIRE_ROUTER=true to force router checks for non-chat probes"

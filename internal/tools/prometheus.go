@@ -36,7 +36,7 @@ func (q *HTTPPrometheusQuerier) Query(ctx context.Context, query string) (string
 	if err != nil {
 		return "", fmt.Errorf("prometheus query: %w", err)
 	}
-	defer resp.Body.Close() //nolint:errcheck
+	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

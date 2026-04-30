@@ -9,9 +9,10 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
 )
 
 // fakeGateway simulates IronClaw API endpoints for integration testing.
@@ -142,8 +143,8 @@ func setupRouter() *fakeGateway {
 			HealthyNodes: 2,
 			TotalNodes:   2,
 			Nodes: []ironclaw.RouterNode{
-				{Name: "gpu-27b", Tier: "agent", Healthy: true},
-				{Name: "gpu-9b", Tier: "fast", Healthy: true},
+				{Name: "example-agent", Tier: "agent", Healthy: true},
+				{Name: "example-fast", Tier: "fast", Healthy: true},
 			},
 		})
 	})
@@ -494,15 +495,15 @@ func TestIntegration_SpawnAgent_OK(t *testing.T) {
 	client := newIntegrationClient(ts.URL)
 	h := NewSpawnAgentHandler(client)
 	res, err := h.Handle(context.Background(), makeReq(map[string]any{
-		"name":  "night-auditor",
-		"model": "qwen3.5-27b",
+		"name":  "worker",
+		"model": "example-model",
 		"tier":  "agent",
 	}))
 	require.NoError(t, err)
 	assert.False(t, res.IsError)
 	out := extractJSON(t, res)
 	assert.NotEmpty(t, out["job_id"])
-	assert.Equal(t, "qwen3.5-27b", out["model"])
+	assert.Equal(t, "example-model", out["model"])
 }
 
 func TestIntegration_SpawnAgent_MissingName(t *testing.T) {

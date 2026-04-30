@@ -24,7 +24,7 @@ func TestHealth_OK(t *testing.T) {
 	client, _ := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/api/health", r.URL.Path)
-		json.NewEncoder(w).Encode(HealthResponse{Status: "healthy", Channel: "gateway"}) //nolint:errcheck
+		json.NewEncoder(w).Encode(HealthResponse{Status: "healthy", Channel: "gateway"})
 	}))
 
 	resp, err := client.Health(context.Background())
@@ -325,7 +325,7 @@ func TestListJobs_OK(t *testing.T) {
 	jobs := JobsResponse{Jobs: []Job{{ID: "j1", State: "in_progress"}, {ID: "j2", State: "completed"}}}
 	client, _ := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/jobs", r.URL.Path)
-		json.NewEncoder(w).Encode(jobs) //nolint:errcheck
+		json.NewEncoder(w).Encode(jobs)
 	}))
 	resp, err := client.ListJobs(context.Background())
 	require.NoError(t, err)
@@ -336,7 +336,7 @@ func TestListJobs_OK(t *testing.T) {
 func TestGetJob_OK(t *testing.T) {
 	client, _ := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/jobs/job-42", r.URL.Path)
-		json.NewEncoder(w).Encode(Job{ID: "job-42", State: "completed"}) //nolint:errcheck
+		json.NewEncoder(w).Encode(Job{ID: "job-42", State: "completed"})
 	}))
 	job, err := client.GetJob(context.Background(), "job-42")
 	require.NoError(t, err)
@@ -359,7 +359,7 @@ func TestSearchMemory_OK(t *testing.T) {
 		var req MemorySearchRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
 		assert.Equal(t, "golang tips", req.Query)
-		json.NewEncoder(w).Encode(MemorySearchResponse{ //nolint:errcheck
+		json.NewEncoder(w).Encode(MemorySearchResponse{
 			Results: []MemoryEntry{{Path: "notes/go.md", Content: "use interfaces"}},
 		})
 	}))
@@ -372,7 +372,7 @@ func TestSearchMemory_OK(t *testing.T) {
 func TestListRoutines_OK(t *testing.T) {
 	client, _ := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/routines", r.URL.Path)
-		json.NewEncoder(w).Encode(RoutinesResponse{ //nolint:errcheck
+		json.NewEncoder(w).Encode(RoutinesResponse{
 			Routines: []Routine{{ID: "r1", Name: "daily-summary", Description: "Daily summary", Status: "active"}},
 		})
 	}))
@@ -395,7 +395,7 @@ func TestDeleteRoutine_OK(t *testing.T) {
 func TestListTools_OK(t *testing.T) {
 	client, _ := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/extensions/tools", r.URL.Path)
-		json.NewEncoder(w).Encode(ToolsResponse{ //nolint:errcheck
+		json.NewEncoder(w).Encode(ToolsResponse{
 			Tools: []ToolInfo{{Name: "web_search", Description: "search the web"}},
 		})
 	}))
@@ -422,4 +422,95 @@ func TestClient_ContextCancellation(t *testing.T) {
 	cancel()
 	_, err := client.Health(ctx)
 	require.Error(t, err)
+}
+
+func TestStackStatus_GatewayAndRouter(t *testing.T) {
+	router := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/healthz", r.URL.Path)
+		require.NoError(t, json.NewEncoder(w).Encode(RouterHealthResponse{
+			OK:           true,
+			HealthyNodes: 1,
+			TotalNodes:   1,
+		}))
+	}))
+	defer router.Close()
+
+	client, _ := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/gateway/status", r.URL.Path)
+		require.NoError(t, json.NewEncoder(w).Encode(GatewayStatusResponse{Status: "healthy"}))
+	}))
+
+	resp, err := client.StackStatus(context.Background(), router.URL)
+	require.NoError(t, err)
+	require.NotNil(t, resp.Router)
+	require.NotNil(t, resp.Gateway)
+	assert.True(t, resp.Router.OK)
+	assert.Equal(t, "healthy", resp.Gateway.Status)
+}
+
+func TestSpawnAgent_OK(t *testing.T) {
+	client, _ := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/api/chat/send", r.URL.Path)
+		var body map[string]string
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		assert.Contains(t, body["content"], "name=worker")
+		w.WriteHeader(http.StatusAccepted)
+		require.NoError(t, json.NewEncoder(w).Encode(chatSendAcceptedResponse{
+			MessageID: "msg-1",
+			Status:    "accepted",
+		}))
+	}))
+
+	resp, err := client.SpawnAgent(context.Background(), SpawnAgentRequest{
+		Name:  "worker",
+		Model: "example-model",
+		Tier:  "fast",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "msg-1", resp.JobID)
+	assert.Equal(t, "accepted", resp.Status)
+	assert.Equal(t, "example-model", resp.Model)
+}
+
+func TestSendTask_OK(t *testing.T) {
+	client, _ := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/api/chat/send", r.URL.Path)
+		require.NoError(t, json.NewEncoder(w).Encode(SendTaskResponse{
+			JobID:  "task-1",
+			Status: "accepted",
+		}))
+	}))
+
+	resp, err := client.SendTask(context.Background(), SendTaskRequest{
+		Message: "run task",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "task-1", resp.JobID)
+	assert.Equal(t, "accepted", resp.Status)
+}
+
+func TestAgentStatus_OK(t *testing.T) {
+	client, _ := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/health":
+			require.NoError(t, json.NewEncoder(w).Encode(HealthResponse{Status: "healthy"}))
+		case "/api/gateway/status":
+			require.NoError(t, json.NewEncoder(w).Encode(GatewayStatusResponse{Status: "ready"}))
+		case "/api/jobs":
+			require.NoError(t, json.NewEncoder(w).Encode(JobsResponse{Jobs: []Job{
+				{ID: "j1", State: "running"},
+				{ID: "j2", State: "completed"},
+			}}))
+		default:
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+	}))
+
+	resp, err := client.AgentStatus(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "ready", resp.Status)
+	assert.Equal(t, 1, resp.ActiveJobs)
+	assert.Equal(t, 2, resp.TotalJobs)
 }

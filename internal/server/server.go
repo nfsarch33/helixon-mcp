@@ -10,6 +10,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	mcpserver "github.com/mark3labs/mcp-go/server"
+
 	"github.com/nfsarch33/ironclaw-mcp/internal/tools"
 )
 
@@ -17,8 +18,6 @@ import (
 type Server struct {
 	client    tools.IronclawClient
 	prom      tools.PrometheusQuerier
-	cli       tools.CLIRunner
-	gws       tools.CLIRunner
 	logger    *slog.Logger
 	version   string
 	mcp       *mcpserver.MCPServer
@@ -26,17 +25,15 @@ type Server struct {
 	toolCount int
 }
 
-// New creates and configures a new MCP Server with all IronClaw tools registered.
-// prom, cli, and gws are optional; when set, the corresponding tools are registered.
-func New(client tools.IronclawClient, prom tools.PrometheusQuerier, cli tools.CLIRunner, gws tools.CLIRunner, logger *slog.Logger, version string) *Server {
+// New creates and configures a new MCP Server with the generic IronClaw gateway
+// tools plus optional Prometheus metrics support.
+func New(client tools.IronclawClient, prom tools.PrometheusQuerier, logger *slog.Logger, version string) *Server {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	s := &Server{
 		client:  client,
 		prom:    prom,
-		cli:     cli,
-		gws:     gws,
 		logger:  logger,
 		version: version,
 	}
@@ -83,112 +80,15 @@ func (s *Server) buildMCPServer() *mcpserver.MCPServer {
 	spawnAgent := tools.NewSpawnAgentHandler(s.client)
 	addTool(spawnAgent.Tool(), spawnAgent.Handle)
 
-	reviewedPush := tools.NewReviewedPushHandler()
-	addTool(reviewedPush.Tool(), reviewedPush.Handle)
-
 	sendTask := tools.NewSendTaskHandler(s.client)
 	addTool(sendTask.Tool(), sendTask.Handle)
 
 	agentStatus := tools.NewAgentStatusHandler(s.client)
 	addTool(agentStatus.Tool(), agentStatus.Handle)
 
-	research := tools.NewResearchHandler()
-	addTool(research.ScrapeTool(), research.HandleScrape)
-	addTool(research.PDFTool(), research.HandlePDF)
-	addTool(research.SearchTool(), research.HandleSearch)
-	addTool(research.StoreTool(), research.HandleStore)
-	addTool(research.PipelineTool(), research.HandlePipeline)
-	addTool(research.TranscriptTool(), research.HandleTranscript)
-	addTool(research.ExtractTool(), research.HandleExtract)
-	addTool(research.CrawlTool(), research.HandleCrawl)
-	addTool(research.DeakinTool(), research.HandleDeakin)
-	addTool(research.AssessmentsTool(), research.HandleAssessments)
-
-	uiauto := tools.NewUIAutoHandler()
-	addTool(uiauto.NavigateTool(), uiauto.HandleNavigate)
-	addTool(uiauto.DiscoverTool(), uiauto.HandleDiscover)
-	addTool(uiauto.HealTool(), uiauto.HandleHeal)
-	addTool(uiauto.VerifyTool(), uiauto.HandleVerify)
-
-	evolver := tools.NewEvolverHandler()
-	addTool(evolver.StatusTool(), evolver.HandleStatus)
-	addTool(evolver.ProposeTool(), evolver.HandlePropose)
-	addTool(evolver.ValidateTool(), evolver.HandleValidate)
-	addTool(evolver.PromoteTool(), evolver.HandlePromote)
-
 	if s.prom != nil {
 		getMetrics := tools.NewGetMetricsHandler(s.prom)
 		addTool(getMetrics.Tool(), getMetrics.Handle)
-	}
-
-	if s.cli != nil {
-		srv.AddTool(tools.NewCRMBriefHandler(s.cli).Tool(), tools.NewCRMBriefHandler(s.cli).Handle)
-		srv.AddTool(tools.NewMorningBriefHandler(s.cli).Tool(), tools.NewMorningBriefHandler(s.cli).Handle)
-		srv.AddTool(tools.NewNightAuditHandler(s.cli).Tool(), tools.NewNightAuditHandler(s.cli).Handle)
-		srv.AddTool(tools.NewSpawnPersonaHandler(s.cli).Tool(), tools.NewSpawnPersonaHandler(s.cli).Handle)
-		srv.AddTool(tools.NewFleetStatusHandler(s.cli).Tool(), tools.NewFleetStatusHandler(s.cli).Handle)
-		srv.AddTool(tools.NewLoadtestHandler(s.cli).Tool(), tools.NewLoadtestHandler(s.cli).Handle)
-		s.toolCount += 6
-	}
-
-	if s.gws != nil {
-		srv.AddTool(tools.NewGWSToolHandler(s.gws).Tool(), tools.NewGWSToolHandler(s.gws).Handle)
-		s.toolCount += 1
-	}
-
-	if s.cli != nil {
-		// Sprint 68: Core ops MCP tools
-		addTool(tools.NewDoctorHandler(s.cli).Tool(), tools.NewDoctorHandler(s.cli).Handle)
-		addTool(tools.NewStatusHandler(s.cli).Tool(), tools.NewStatusHandler(s.cli).Handle)
-		addTool(tools.NewInstallHandler(s.cli).Tool(), tools.NewInstallHandler(s.cli).Handle)
-		addTool(tools.NewDeployHandler(s.cli).Tool(), tools.NewDeployHandler(s.cli).Handle)
-		addTool(tools.NewLogsHandler(s.cli).Tool(), tools.NewLogsHandler(s.cli).Handle)
-		addTool(tools.NewSpawnFullHandler(s.cli).Tool(), tools.NewSpawnFullHandler(s.cli).Handle)
-		addTool(tools.NewListAgentsHandler(s.cli).Tool(), tools.NewListAgentsHandler(s.cli).Handle)
-		addTool(tools.NewStopAgentHandler(s.cli).Tool(), tools.NewStopAgentHandler(s.cli).Handle)
-		addTool(tools.NewGPUStatusHandler(s.cli).Tool(), tools.NewGPUStatusHandler(s.cli).Handle)
-		addTool(tools.NewCostSummaryHandler(s.cli).Tool(), tools.NewCostSummaryHandler(s.cli).Handle)
-		addTool(tools.NewMemoryStatsHandler(s.cli).Tool(), tools.NewMemoryStatsHandler(s.cli).Handle)
-
-		// Sprint 69: Extended ops MCP tools
-		addTool(tools.NewFleetHandler(s.cli).Tool(), tools.NewFleetHandler(s.cli).Handle)
-		addTool(tools.NewRoutineHandler(s.cli).Tool(), tools.NewRoutineHandler(s.cli).Handle)
-		addTool(tools.NewA2AFullHandler(s.cli).Tool(), tools.NewA2AFullHandler(s.cli).Handle)
-		addTool(tools.NewSnapshotHandler(s.cli).Tool(), tools.NewSnapshotHandler(s.cli).Handle)
-		addTool(tools.NewRecoverHandler(s.cli).Tool(), tools.NewRecoverHandler(s.cli).Handle)
-		addTool(tools.NewWorkspaceHandler(s.cli).Tool(), tools.NewWorkspaceHandler(s.cli).Handle)
-		addTool(tools.NewCRMFullHandler(s.cli).Tool(), tools.NewCRMFullHandler(s.cli).Handle)
-		addTool(tools.NewSkillsHandler(s.cli).Tool(), tools.NewSkillsHandler(s.cli).Handle)
-		addTool(tools.NewCEOOrchestrateHandler(s.cli).Tool(), tools.NewCEOOrchestrateHandler(s.cli).Handle)
-		addTool(tools.NewJobOpsHandler(s.cli).Tool(), tools.NewJobOpsHandler(s.cli).Handle)
-		addTool(tools.NewExportDashboardsHandler(s.cli).Tool(), tools.NewExportDashboardsHandler(s.cli).Handle)
-
-		k8sOps := tools.NewK8sOpsHandler(s.cli)
-		addTool(k8sOps.Tool(), k8sOps.Handle)
-
-		tfOps := tools.NewTfOpsHandler(s.cli)
-		addTool(tfOps.Tool(), tfOps.Handle)
-
-		fleetOps := tools.NewFleetOpsHandler(s.cli)
-		addTool(fleetOps.Tool(), fleetOps.Handle)
-
-		grafanaOps := tools.NewGrafanaOpsHandler(s.cli)
-		addTool(grafanaOps.Tool(), grafanaOps.Handle)
-
-		governanceOps := tools.NewGovernanceHandler(s.cli)
-		addTool(governanceOps.Tool(), governanceOps.Handle)
-
-		timelineOps := tools.NewTimelineHandler(s.cli)
-		addTool(timelineOps.Tool(), timelineOps.Handle)
-
-		llmRoute := tools.NewLLMRouteHandler(s.cli)
-		addTool(llmRoute.Tool(), llmRoute.Handle)
-
-		llmUsage := tools.NewLLMUsageHandler(s.cli)
-		addTool(llmUsage.Tool(), llmUsage.Handle)
-
-		llmBudget := tools.NewLLMBudgetHandler(s.cli)
-		addTool(llmBudget.Tool(), llmBudget.Handle)
 	}
 
 	return srv
@@ -234,8 +134,12 @@ func (s *Server) runSSE(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 		s.logger.Info("SSE server shutting down")
-		sseSrv.Shutdown(context.Background())
-		srv.Close()
+		if err := sseSrv.Shutdown(context.Background()); err != nil {
+			s.logger.Debug("SSE MCP shutdown returned error", "error", err)
+		}
+		if err := srv.Close(); err != nil {
+			s.logger.Debug("SSE HTTP server close returned error", "error", err)
+		}
 	}()
 
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {

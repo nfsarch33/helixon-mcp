@@ -487,7 +487,7 @@ func (c *Client) do(req *http.Request, out interface{}) error {
 	if err != nil {
 		return fmt.Errorf("executing request %s %s: %w", req.Method, req.URL.Path, err)
 	}
-	defer resp.Body.Close() //nolint:errcheck
+	defer resp.Body.Close()
 
 	limited := io.LimitReader(resp.Body, MaxResponseBytes)
 

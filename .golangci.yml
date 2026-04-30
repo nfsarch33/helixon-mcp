@@ -1,47 +1,48 @@
-# golangci-lint configuration
-linters-settings:
-  goimports:
-    local-prefixes: github.com/nfsarch33/ironclaw-mcp
-  govet:
-    enable-all: true
-  revive:
-    rules:
-      - name: exported
-        severity: warning
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - style
-      - performance
-  exhaustive:
-    default-signifies-exhaustive: true
-
+version: "2"
+run:
+  go: "1.23"
 linters:
   enable:
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
-    - goimports
-    - revive
-    - gocritic
+    - bodyclose
     - godot
     - misspell
-    - prealloc
-    - noctx
-    - bodyclose
-    - contextcheck
     - nolintlint
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-        - gocritic
-
-run:
-  timeout: 5m
-  go: "1.23"
+    - revive
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+    revive:
+      rules:
+        - name: exported
+          severity: warning
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+        path: _test\.go
+      - linters:
+          - revive
+        text: "stutters"
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/nfsarch33/ironclaw-mcp
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

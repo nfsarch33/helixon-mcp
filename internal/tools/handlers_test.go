@@ -7,9 +7,10 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
 )
 
 func makeReq(args map[string]any) mcp.CallToolRequest {
@@ -229,88 +230,6 @@ func TestToolsListHandler_Error(t *testing.T) {
 	assert.True(t, res.IsError)
 }
 
-// --- Reviewed Push ---
-
-func TestReviewedPushHandler_ReviewOnlyPass(t *testing.T) {
-	h := &ReviewedPushHandler{
-		run: func(_ context.Context, _ string, _ string, name string, args ...string) (string, error) {
-			switch name {
-			case "git":
-				if len(args) >= 2 && args[0] == "branch" && args[1] == "--show-current" {
-					return "feature/test\n", nil
-				}
-				return "diff --git a/a.go b/a.go\n+package main\n", nil
-			case "gemini":
-				return `{"verdict":"pass","must_fix":[],"should_fix":[],"nits":[]}`, nil
-			default:
-				return "", errors.New("unexpected command")
-			}
-		},
-	}
-
-	res, err := h.Handle(context.Background(), makeReq(map[string]any{
-		"workdir":     "/tmp/repo",
-		"review_only": "true",
-	}))
-	require.NoError(t, err)
-	assert.False(t, res.IsError)
-	assert.Contains(t, res.Content[0].(mcp.TextContent).Text, `"allowed": true`)
-	assert.Contains(t, res.Content[0].(mcp.TextContent).Text, `"pushed": false`)
-}
-
-func TestReviewedPushHandler_BlocksMustFix(t *testing.T) {
-	h := &ReviewedPushHandler{
-		run: func(_ context.Context, _ string, _ string, name string, args ...string) (string, error) {
-			switch name {
-			case "git":
-				if len(args) >= 2 && args[0] == "branch" && args[1] == "--show-current" {
-					return "feature/test\n", nil
-				}
-				return "diff --git a/main.rs b/main.rs\n+.unwrap()\n", nil
-			case "gemini":
-				return `{"verdict":"fail","must_fix":[{"issue":"panic-prone unwrap","file":"main.rs","line":10}],"should_fix":[],"nits":[]}`, nil
-			default:
-				return "", errors.New("unexpected command")
-			}
-		},
-	}
-
-	res, err := h.Handle(context.Background(), makeReq(map[string]any{"workdir": "/tmp/repo"}))
-	require.NoError(t, err)
-	assert.False(t, res.IsError)
-	assert.Contains(t, res.Content[0].(mcp.TextContent).Text, `"allowed": false`)
-	assert.Contains(t, res.Content[0].(mcp.TextContent).Text, `panic-prone unwrap`)
-}
-
-func TestReviewedPushHandler_PushesOnPass(t *testing.T) {
-	var pushCalled bool
-	h := &ReviewedPushHandler{
-		run: func(_ context.Context, _ string, _ string, name string, args ...string) (string, error) {
-			switch name {
-			case "git":
-				if len(args) >= 2 && args[0] == "branch" && args[1] == "--show-current" {
-					return "feature/test\n", nil
-				}
-				if len(args) >= 1 && args[0] == "push" {
-					pushCalled = true
-					return "pushed", nil
-				}
-				return "diff --git a/a.go b/a.go\n+package main\n", nil
-			case "gemini":
-				return `{"verdict":"pass","must_fix":[],"should_fix":[{"issue":"add test","file":"a.go","line":1}],"nits":[]}`, nil
-			default:
-				return "", errors.New("unexpected command")
-			}
-		},
-	}
-
-	res, err := h.Handle(context.Background(), makeReq(map[string]any{"workdir": "/tmp/repo"}))
-	require.NoError(t, err)
-	assert.False(t, res.IsError)
-	assert.True(t, pushCalled)
-	assert.Contains(t, res.Content[0].(mcp.TextContent).Text, `"pushed": true`)
-}
-
 // --- Stack Status ---
 
 func TestStackStatusHandler_OK(t *testing.T) {
@@ -322,8 +241,8 @@ func TestStackStatusHandler_OK(t *testing.T) {
 				HealthyNodes: 2,
 				TotalNodes:   2,
 				Nodes: []ironclaw.RouterNode{
-					{Name: "gpu-27b", Tier: "agent", Healthy: true},
-					{Name: "gpu-9b", Tier: "fast", Healthy: true},
+					{Name: "example-agent", Tier: "agent", Healthy: true},
+					{Name: "example-fast", Tier: "fast", Healthy: true},
 				},
 			},
 			Gateway: &ironclaw.GatewayStatusResponse{
@@ -337,7 +256,7 @@ func TestStackStatusHandler_OK(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, res.IsError)
 	text := res.Content[0].(mcp.TextContent).Text
-	assert.Contains(t, text, "gpu-27b")
+	assert.Contains(t, text, "example-agent")
 	assert.Contains(t, text, "ok")
 }
 
@@ -367,10 +286,10 @@ func TestStackStatusHandler_Error(t *testing.T) {
 
 func TestSpawnAgentHandler_OK(t *testing.T) {
 	m := new(MockIronclawClient)
-	m.On("SpawnAgent", context.Background(), ironclaw.SpawnAgentRequest{Name: "auditor", Model: "qwen3.5-27b", Tier: "agent"}).
-		Return(&ironclaw.SpawnAgentResponse{JobID: "j42", Status: "accepted", Model: "qwen3.5-27b"}, nil)
+	m.On("SpawnAgent", context.Background(), ironclaw.SpawnAgentRequest{Name: "worker", Model: "example-model", Tier: "agent"}).
+		Return(&ironclaw.SpawnAgentResponse{JobID: "j42", Status: "accepted", Model: "example-model"}, nil)
 	h := NewSpawnAgentHandler(m)
-	res, err := h.Handle(context.Background(), makeReq(map[string]any{"name": "auditor", "model": "qwen3.5-27b", "tier": "agent"}))
+	res, err := h.Handle(context.Background(), makeReq(map[string]any{"name": "worker", "model": "example-model", "tier": "agent"}))
 	require.NoError(t, err)
 	assert.False(t, res.IsError)
 	text := res.Content[0].(mcp.TextContent).Text

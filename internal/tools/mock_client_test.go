@@ -3,8 +3,9 @@ package tools
 import (
 	"context"
 
-	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
 )
 
 // MockIronclawClient is a testify mock for IronclawClient.

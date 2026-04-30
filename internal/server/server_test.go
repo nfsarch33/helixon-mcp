@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
 )
 
 func discardLogger() *slog.Logger {
@@ -76,49 +77,34 @@ func (m *mockProm) Query(ctx context.Context, query string) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
-type mockCLI struct{}
-
-func (m *mockCLI) Run(ctx context.Context, args ...string) (string, error) {
-	return "", nil
-}
-
 func TestNew_RegistersBaseTools(t *testing.T) {
-	srv := New(new(mockClient), nil, nil, nil, discardLogger(), "0.1.0")
+	srv := New(new(mockClient), nil, discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
-	// 14 core + 10 research + 4 uiauto + 4 evolver = 32 (no prometheus = no get_metrics)
-	assert.Equal(t, 32, count)
+	// Generic IronClaw HTTP-bridge baseline.
+	assert.Equal(t, 13, count)
 }
 
 func TestNew_WithPrometheus_RegistersMetricsTool(t *testing.T) {
-	srv := New(new(mockClient), new(mockProm), nil, nil, discardLogger(), "0.1.0")
+	srv := New(new(mockClient), new(mockProm), discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
-	// 32 base + get_metrics = 33
-	assert.Equal(t, 33, count)
+	// Generic baseline + ironclaw_get_metrics when PROMETHEUS_URL is configured.
+	assert.Equal(t, 14, count)
 }
 
-func TestNew_WithCLI_RegistersCEOTools(t *testing.T) {
-	srv := New(new(mockClient), nil, &mockCLI{}, nil, discardLogger(), "0.1.0")
-	count := srv.RegisteredToolCount()
-	// 32 base + 6 CEO + 9 dual-ops + 11 ops + 11 extended = 69
-	assert.Equal(t, 69, count)
-}
-
-func TestNew_WithAll_RegistersAllTools(t *testing.T) {
-	srv := New(new(mockClient), new(mockProm), &mockCLI{}, &mockCLI{}, discardLogger(), "0.1.0")
-	count := srv.RegisteredToolCount()
-	// 32 base + get_metrics + 6 CEO + 1 GWS + 9 dual-ops + 22 new ops/extended = 71
-	assert.Equal(t, 71, count)
+func TestMCPServer_ReturnsConfiguredServer(t *testing.T) {
+	srv := New(new(mockClient), nil, discardLogger(), "0.1.0")
+	assert.NotNil(t, srv.MCPServer())
 }
 
 func TestRun_UnknownTransport(t *testing.T) {
-	srv := New(new(mockClient), nil, nil, nil, discardLogger(), "0.1.0")
+	srv := New(new(mockClient), nil, discardLogger(), "0.1.0")
 	err := srv.Run(context.Background(), "grpc")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown transport")
 }
 
 func TestRun_SSE_StartsAndStops(t *testing.T) {
-	srv := New(new(mockClient), nil, nil, nil, discardLogger(), "0.1.0")
+	srv := New(new(mockClient), nil, discardLogger(), "0.1.0")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Setenv("MCP_SSE_ADDR", ":0")

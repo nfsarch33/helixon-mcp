@@ -2,10 +2,75 @@
 
 [![CI](https://github.com/nfsarch33/ironclaw-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/nfsarch33/ironclaw-mcp/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nfsarch33/ironclaw-mcp)](https://goreportcard.com/report/github.com/nfsarch33/ironclaw-mcp)
+[![Go Reference](https://pkg.go.dev/badge/github.com/nfsarch33/ironclaw-mcp.svg)](https://pkg.go.dev/github.com/nfsarch33/ironclaw-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A production-ready **MCP (Model Context Protocol) server** written in Go that bridges [IronClaw](https://github.com/nearai/ironclaw) with any MCP-compatible AI coding assistant — Cursor, Claude Code, VS Code Copilot, and more.
+A general-purpose **MCP (Model Context Protocol) server** in Go that bridges
+[IronClaw](https://github.com/nearai/ironclaw) — an open-source autonomous AI
+assistant runtime — with any MCP-compatible client (Cursor, Claude Code,
+VS Code Copilot, Continue, Zed, …).
 
-## Tools Exposed
+The default tool surface speaks **only the documented IronClaw HTTP gateway
+API** and ships no deployment-specific assumptions, so a fresh install works
+against any IronClaw instance you point it at.
+
+## Install in 2 minutes
+
+```bash
+# 1. Install (or build from source — see below)
+go install github.com/nfsarch33/ironclaw-mcp/cmd/ironclaw-mcp@latest
+
+# 2. Point at your IronClaw gateway
+export IRONCLAW_BASE_URL=http://localhost:3000
+export IRONCLAW_API_KEY=your-gateway-token   # if GATEWAY_AUTH_TOKEN is set
+
+# 3. Sanity check
+ironclaw-mcp --version
+```
+
+Then add it to your MCP client. For Cursor / Claude Code / VS Code Copilot:
+
+```json
+{
+  "mcpServers": {
+    "ironclaw": {
+      "command": "ironclaw-mcp",
+      "env": {
+        "IRONCLAW_BASE_URL": "http://localhost:3000",
+        "IRONCLAW_API_KEY": "your-gateway-token"
+      }
+    }
+  }
+}
+```
+
+Or via Docker (no Go toolchain required):
+
+```json
+{
+  "mcpServers": {
+    "ironclaw": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-e", "IRONCLAW_BASE_URL=http://host.docker.internal:3000",
+        "-e", "IRONCLAW_API_KEY",
+        "ghcr.io/nfsarch33/ironclaw-mcp:latest"
+      ]
+    }
+  }
+}
+```
+
+Reload MCP servers in your client and the `ironclaw_*` tools will appear.
+
+> Found a bug or want a feature? Please open an issue at
+> <https://github.com/nfsarch33/ironclaw-mcp/issues>.
+
+## Default Tool Surface (13 tools)
+
+These tools are always registered when the IronClaw gateway is reachable.
+They speak only the documented IronClaw HTTP API and are deployment-agnostic.
 
 | Tool | Description |
 |---|---|
@@ -20,42 +85,22 @@ A production-ready **MCP (Model Context Protocol) server** written in Go that br
 | `ironclaw_list_tools` | List all tools registered in IronClaw extensions |
 | `ironclaw_stack_status` | Combined health of LLM router nodes, GPU availability, and gateway |
 | `ironclaw_spawn_agent` | Spawn a new agent job with model and tier selection |
-| `ironclaw_send_task` | Send a strategic task for background execution |
+| `ironclaw_send_task` | Enqueue a background task/message via the IronClaw gateway |
 | `ironclaw_agent_status` | Agent thread states, active/total job counts, last heartbeat |
-| `ironclaw_get_metrics` | Query Prometheus for agent metrics (requires `PROMETHEUS_URL`) |
-| `ironclaw_reviewed_push` | Run Gemini diff review, then push only when no must-fix issues remain |
 
-## Quick Start
+### Optional adjuncts
 
-### Prerequisites
-- Go 1.23+
-- A running [IronClaw](https://github.com/nearai/ironclaw) instance
+| Env var / flag | Tool(s) added | Notes |
+|---|---|---|
+| `PROMETHEUS_URL=...` | `ironclaw_get_metrics` | Prometheus query bridge for IronClaw metrics; +1 tool |
 
-### Run with `go run`
-
-```bash
-export IRONCLAW_BASE_URL=http://localhost:3000
-export IRONCLAW_API_KEY=your-api-key   # required when IronClaw gateway auth is enabled
-go run ./cmd/ironclaw-mcp
-```
-
-### Build and run
-
-```bash
-make build
-./bin/ironclaw-mcp
-```
-
-### Docker
-
-```bash
-make docker-build
-make docker-run
-```
+No local shell helpers or deployment-specific tool packs are registered in this
+repository. Fleet, workspace, and review workflows belong in separate MCP
+servers so the default bridge stays portable.
 
 ## Configuration
 
-All configuration is via environment variables:
+All configuration is via environment variables.
 
 | Variable | Default | Description |
 |---|---|---|
@@ -66,55 +111,81 @@ All configuration is via environment variables:
 | `MCP_TRANSPORT` | `stdio` | `stdio` or `sse` |
 | `MCP_SSE_ADDR` | `:8080` | Bind address when using SSE |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+| `PROMETHEUS_URL` | _(empty)_ | If set, registers the `ironclaw_get_metrics` tool |
 
-**Secure local defaults:** By default, `IRONCLAW_BASE_URL` is restricted to loopback addresses (`localhost`, `127.0.0.1`, `[::1]`). Set `IRONCLAW_ALLOW_NON_LOCALHOST=true` only when you explicitly need to connect to a remote IronClaw instance.
+**Secure local defaults:** By default, `IRONCLAW_BASE_URL` is restricted to
+loopback addresses (`localhost`, `127.0.0.1`, `[::1]`). Set
+`IRONCLAW_ALLOW_NON_LOCALHOST=true` only when you explicitly need to connect
+to a remote IronClaw instance.
 
-## Cursor / Claude Code Integration
+See [`docs/configuration.md`](docs/configuration.md) for the full reference,
+including transport-specific notes and Cursor integration tips.
 
-Add to your `~/.cursor/mcp.json` (or Claude Code config):
+## Build from source
 
-```json
-{
-  "mcpServers": {
-    "ironclaw": {
-      "command": "/path/to/bin/ironclaw-mcp",
-      "env": {
-        "IRONCLAW_BASE_URL": "http://localhost:3000",
-        "IRONCLAW_API_KEY": "your-key"
-      }
-    }
-  }
-}
+```bash
+git clone https://github.com/nfsarch33/ironclaw-mcp.git
+cd ironclaw-mcp
+make build
+./bin/ironclaw-mcp --version
 ```
 
 Or with Docker:
 
-```json
-{
-  "mcpServers": {
-    "ironclaw": {
-      "command": "docker",
-      "args": ["run", "--rm", "-i",
-        "-e", "IRONCLAW_BASE_URL=http://host.docker.internal:3000",
-        "ironclaw-mcp:latest"
-      ]
-    }
-  }
-}
+```bash
+make docker-build
+make docker-run
 ```
+
+Prerequisites: **Go 1.24+** and a running [IronClaw](https://github.com/nearai/ironclaw)
+instance.
+
+## Smoke test
+
+A `make smoke` target exercises the local install end-to-end against an
+already-running IronClaw gateway:
+
+```bash
+make smoke                                          # gateway-only proof
+SMOKE_STATEFUL_TOOL=ironclaw_chat make smoke         # full local chat path
+make smoke SMOKE_ARGS="--all"                        # all 13 default tools
+./scripts/smoke-test.sh --all --report | jq '.summary'  # JSON for CI
+```
+
+The `--all` flag exercises every tool with safe, deterministic payloads
+(destructive tools are skipped with documented reasons). The `--report`
+flag emits a structured JSON report suitable for CI pipelines.
+
+See [`docs/quickstart.md`](docs/quickstart.md) for the full smoke
+checklist.
 
 ## Development
 
 ```bash
-# Full check (tidy + fmt + vet + lint + test)
-make check
-
-# Test with coverage report
-make coverage
-
-# Run linter only
-make lint
+make check        # tidy + fmt + vet + lint + test
+make coverage     # generates coverage.out + HTML report
+make lint         # golangci-lint only
 ```
+
+Test coverage gate in CI is **70 %** total; current total is ~84 %.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for branch / commit conventions.
+
+## Architecture
+
+```
+Cursor/Claude/Copilot ──stdio──► ironclaw-mcp (MCP server)
+                                          │
+                                  internal/tools/*
+                                          │
+                                  internal/ironclaw.Client
+                                          │
+                                       HTTP/REST
+                                          │
+                                    IronClaw :3000
+```
+
+See [`docs/architecture.md`](docs/architecture.md) for the package-level
+breakdown.
 
 ## Project Structure
 
@@ -126,73 +197,44 @@ ironclaw-mcp/
 │   ├── ironclaw/         # IronClaw HTTP API client
 │   ├── tools/            # MCP tool handlers (one file per domain)
 │   └── server/           # MCP server wiring
-├── .github/workflows/    # CI: lint, test, build, security scan
+├── docs/                 # Quickstart, architecture, configuration
+├── .github/              # CI workflows, issue/PR templates
 ├── .golangci.yml         # golangci-lint config
-├── Dockerfile            # Multi-stage scratch image
+├── Dockerfile            # Multi-stage minimal image
 └── Makefile              # Developer task runner
 ```
 
-## Local Integration Path (Cursor + IronClaw)
+## Troubleshooting
 
-The supported local setup for Cursor integration:
+- **Connection refused** — ensure IronClaw is running and bound to
+  `localhost:3000` (or set `IRONCLAW_BASE_URL`).
+- **401 Unauthorized** — set `IRONCLAW_API_KEY` to the token IronClaw prints
+  at startup, or to whatever you set `GATEWAY_AUTH_TOKEN` to.
+- **Non-loopback URL rejected** — set `IRONCLAW_ALLOW_NON_LOCALHOST=true`
+  only when intentionally connecting to a remote IronClaw instance.
+- **Chat appears asynchronous** — `ironclaw-mcp` polls IronClaw thread
+  history after `/api/chat/send`; if the underlying model is overloaded the
+  tool can time out instead of returning a partial response.
 
-1. **IronClaw runtime** — bound to loopback (`GATEWAY_HOST=127.0.0.1`, default)
-2. **ironclaw-mcp bridge** — stdio transport in Cursor, `IRONCLAW_BASE_URL=http://localhost:3000`
-3. **Minimal config** — `~/.cursor/mcp.json` with `command` and `IRONCLAW_API_KEY` whenever the gateway is protected by `GATEWAY_AUTH_TOKEN`
+## Recent releases
 
-### Smoke Test Workflow
+- **v0.5.1 — public polish:** Added public documentation and governance
+  files, removed non-gateway helper surfaces, and scrubbed release notes for
+  public consumption.
+- **v0.5.0 — generic-by-default:** Tool surface flipped to ship only the
+  generic IronClaw HTTP-gateway bridge by default.
+- **v0.4.0 — scraper cleanup:** Removed all `ironclaw_research_*`,
+  `ironclaw_ui_*`, and `ironclaw_evolver_*` tools that wrapped the
+  external domain-specific research CLI.
 
-1. Start IronClaw with loopback-first settings (gateway on `http://localhost:3000`)
-2. Export `IRONCLAW_API_KEY` if the gateway is protected by `GATEWAY_AUTH_TOKEN`
-3. Run `make smoke` for the gateway-only proof, or `SMOKE_STATEFUL_TOOL=ironclaw_chat make smoke` for the full local chat-path proof
-4. The harness verifies:
-   - IronClaw gateway `/api/health`
-   - Router `/healthz` and `/v1/models` when the chat-path proof is requested
-   - MCP `initialize`
-   - MCP `tools/list`
-   - `ironclaw_health`
-   - One configurable stateful tool (`ironclaw_list_jobs` by default, or `SMOKE_STATEFUL_TOOL=ironclaw_chat`)
-5. Add `ironclaw-mcp` to `~/.cursor/mcp.json` and reload MCP servers
+See [`CHANGELOG.md`](CHANGELOG.md) for the full release history.
 
-#### `--all` and `--report` flags
+## Contributing
 
-```bash
-# Test all 15 tools with deterministic payloads
-make smoke SMOKE_ARGS="--all"
-
-# Get JSON test results (pipe to jq, CI artifacts, etc.)
-./scripts/smoke-test.sh --all --report
-
-# JSON output includes per-tool pass/fail/skip status and timing
-./scripts/smoke-test.sh --all --report | jq '.summary'
-```
-
-The `--all` flag exercises every tool with safe, deterministic payloads (destructive tools like `ironclaw_delete_routine` and slow tools like `ironclaw_chat` are skipped with documented reasons). The `--report` flag outputs a structured JSON report suitable for CI pipelines.
-
-### Troubleshooting
-
-- **Connection refused**: Ensure IronClaw is running and bound to localhost:3000
-- **Router health check fails**: Ensure `llm-cluster-router` is listening on `SMOKE_ROUTER_URL` and the local upstreams have finished model load
-- **Expected model missing from `/v1/models`**: Check the router config and make sure the primary `qwen3.5-27b` upstream is healthy before re-running chat smoke
-- **401 Unauthorized**: Set `IRONCLAW_API_KEY` to the token printed by IronClaw at startup (or `GATEWAY_AUTH_TOKEN` if you set it)
-- **Non-loopback URL rejected**: Use `IRONCLAW_ALLOW_NON_LOCALHOST=true` only when connecting to a remote IronClaw instance
-- **Chat appears asynchronous**: `ironclaw-mcp` now polls IronClaw thread history after `/api/chat/send`; if the local model is overloaded or unavailable, the tool call can time out instead of returning a partial response
-- **Need a full chat-path proof**: Run `SMOKE_STATEFUL_TOOL=ironclaw_chat make smoke` once the local router exposes `qwen3.5-27b`, or set `SMOKE_REQUIRE_ROUTER=true` to force the same router checks for a non-chat probe
-
-## Architecture
-
-```
-Cursor/Claude ──stdio──► ironclaw-mcp (MCP server)
-                              │
-                    internal/tools/*
-                              │
-                    internal/ironclaw.Client
-                              │
-                         HTTP/REST
-                              │
-                        IronClaw :3000
-```
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for development workflow,
+branch / commit conventions, and the test coverage policy. Security issues:
+see [`SECURITY.md`](SECURITY.md).
 
 ## License
 
-MIT
+[MIT](LICENSE) © 2026 ironclaw-mcp authors.
