@@ -18,6 +18,9 @@ type IronclawClient interface {
 	GetJob(ctx context.Context, jobID string) (*ironclaw.Job, error)
 	CancelJob(ctx context.Context, jobID string) error
 	SearchMemory(ctx context.Context, req ironclaw.MemorySearchRequest) (*ironclaw.MemorySearchResponse, error)
+	WriteMemory(ctx context.Context, req ironclaw.MemoryWriteRequest) (*ironclaw.MemoryWriteResponse, error)
+	ReadMemory(ctx context.Context, req ironclaw.MemoryReadRequest) (*ironclaw.MemoryReadResponse, error)
+	TreeMemory(ctx context.Context, req ironclaw.MemoryTreeRequest) (*ironclaw.MemoryTreeResponse, error)
 	ListRoutines(ctx context.Context) (*ironclaw.RoutinesResponse, error)
 	DeleteRoutine(ctx context.Context, routineID string) error
 	ListTools(ctx context.Context) (*ironclaw.ToolsResponse, error)
