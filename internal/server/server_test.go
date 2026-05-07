@@ -42,6 +42,18 @@ func (m *mockClient) SearchMemory(ctx context.Context, req ironclaw.MemorySearch
 	args := m.Called(ctx, req)
 	return args.Get(0).(*ironclaw.MemorySearchResponse), args.Error(1)
 }
+func (m *mockClient) WriteMemory(ctx context.Context, req ironclaw.MemoryWriteRequest) (*ironclaw.MemoryWriteResponse, error) {
+	args := m.Called(ctx, req)
+	return args.Get(0).(*ironclaw.MemoryWriteResponse), args.Error(1)
+}
+func (m *mockClient) ReadMemory(ctx context.Context, req ironclaw.MemoryReadRequest) (*ironclaw.MemoryReadResponse, error) {
+	args := m.Called(ctx, req)
+	return args.Get(0).(*ironclaw.MemoryReadResponse), args.Error(1)
+}
+func (m *mockClient) TreeMemory(ctx context.Context, req ironclaw.MemoryTreeRequest) (*ironclaw.MemoryTreeResponse, error) {
+	args := m.Called(ctx, req)
+	return args.Get(0).(*ironclaw.MemoryTreeResponse), args.Error(1)
+}
 func (m *mockClient) ListRoutines(ctx context.Context) (*ironclaw.RoutinesResponse, error) {
 	args := m.Called(ctx)
 	return args.Get(0).(*ironclaw.RoutinesResponse), args.Error(1)
@@ -81,14 +93,14 @@ func TestNew_RegistersBaseTools(t *testing.T) {
 	srv := New(new(mockClient), nil, discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
 	// Generic IronClaw HTTP-bridge baseline.
-	assert.Equal(t, 13, count)
+	assert.Equal(t, 17, count)
 }
 
 func TestNew_WithPrometheus_RegistersMetricsTool(t *testing.T) {
 	srv := New(new(mockClient), new(mockProm), discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
 	// Generic baseline + ironclaw_get_metrics when PROMETHEUS_URL is configured.
-	assert.Equal(t, 14, count)
+	assert.Equal(t, 18, count)
 }
 
 func TestMCPServer_ReturnsConfiguredServer(t *testing.T) {

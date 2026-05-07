@@ -67,6 +67,12 @@ func (s *Server) buildMCPServer() *mcpserver.MCPServer {
 	mem := tools.NewMemoryHandler(s.client)
 	addTool(mem.Tool(), mem.Handle)
 
+	workspaceMem := tools.NewWorkspaceMemoryHandler(s.client)
+	addTool(workspaceMem.SearchTool(), workspaceMem.HandleSearch)
+	addTool(workspaceMem.WriteTool(), workspaceMem.HandleWrite)
+	addTool(workspaceMem.ReadTool(), workspaceMem.HandleRead)
+	addTool(workspaceMem.TreeTool(), workspaceMem.HandleTree)
+
 	routines := tools.NewRoutinesHandler(s.client)
 	addTool(routines.ListRoutinesTool(), routines.HandleListRoutines)
 	addTool(routines.DeleteRoutineTool(), routines.HandleDeleteRoutine)
