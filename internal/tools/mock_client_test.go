@@ -43,6 +43,21 @@ func (m *MockIronclawClient) SearchMemory(ctx context.Context, req ironclaw.Memo
 	return args.Get(0).(*ironclaw.MemorySearchResponse), args.Error(1)
 }
 
+func (m *MockIronclawClient) WriteMemory(ctx context.Context, req ironclaw.MemoryWriteRequest) (*ironclaw.MemoryWriteResponse, error) {
+	args := m.Called(ctx, req)
+	return args.Get(0).(*ironclaw.MemoryWriteResponse), args.Error(1)
+}
+
+func (m *MockIronclawClient) ReadMemory(ctx context.Context, req ironclaw.MemoryReadRequest) (*ironclaw.MemoryReadResponse, error) {
+	args := m.Called(ctx, req)
+	return args.Get(0).(*ironclaw.MemoryReadResponse), args.Error(1)
+}
+
+func (m *MockIronclawClient) TreeMemory(ctx context.Context, req ironclaw.MemoryTreeRequest) (*ironclaw.MemoryTreeResponse, error) {
+	args := m.Called(ctx, req)
+	return args.Get(0).(*ironclaw.MemoryTreeResponse), args.Error(1)
+}
+
 func (m *MockIronclawClient) ListRoutines(ctx context.Context) (*ironclaw.RoutinesResponse, error) {
 	args := m.Called(ctx)
 	return args.Get(0).(*ironclaw.RoutinesResponse), args.Error(1)

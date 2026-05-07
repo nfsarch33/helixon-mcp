@@ -104,6 +104,47 @@ type MemorySearchResponse struct {
 	Results []MemoryEntry `json:"results"`
 }
 
+// MemoryWriteRequest writes or replaces a workspace memory entry.
+type MemoryWriteRequest struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
+// MemoryWriteResponse is returned by POST /api/memory/write.
+type MemoryWriteResponse struct {
+	Path    string `json:"path"`
+	Version int    `json:"version,omitempty"`
+	Status  string `json:"status,omitempty"`
+}
+
+// MemoryReadRequest reads a single workspace memory entry by path.
+type MemoryReadRequest struct {
+	Path string `json:"path"`
+}
+
+// MemoryReadResponse is returned by POST /api/memory/read.
+type MemoryReadResponse struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+	Version int    `json:"version,omitempty"`
+}
+
+// MemoryTreeRequest lists workspace memory entries below a prefix.
+type MemoryTreeRequest struct {
+	Prefix string `json:"prefix,omitempty"`
+}
+
+// MemoryTreeEntry is a single memory tree node.
+type MemoryTreeEntry struct {
+	Path string `json:"path"`
+	Type string `json:"type"`
+}
+
+// MemoryTreeResponse is returned by POST /api/memory/tree.
+type MemoryTreeResponse struct {
+	Entries []MemoryTreeEntry `json:"entries"`
+}
+
 // Routine represents an IronClaw scheduled routine.
 type Routine struct {
 	ID                  string `json:"id"`
@@ -326,6 +367,33 @@ func (c *Client) CancelJob(ctx context.Context, jobID string) error {
 func (c *Client) SearchMemory(ctx context.Context, req MemorySearchRequest) (*MemorySearchResponse, error) {
 	var resp MemorySearchResponse
 	if err := c.post(ctx, "/api/memory/search", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// WriteMemory writes a workspace memory entry.
+func (c *Client) WriteMemory(ctx context.Context, req MemoryWriteRequest) (*MemoryWriteResponse, error) {
+	var resp MemoryWriteResponse
+	if err := c.post(ctx, "/api/memory/write", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// ReadMemory reads a workspace memory entry by path.
+func (c *Client) ReadMemory(ctx context.Context, req MemoryReadRequest) (*MemoryReadResponse, error) {
+	var resp MemoryReadResponse
+	if err := c.post(ctx, "/api/memory/read", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// TreeMemory lists workspace memory paths under a prefix.
+func (c *Client) TreeMemory(ctx context.Context, req MemoryTreeRequest) (*MemoryTreeResponse, error) {
+	var resp MemoryTreeResponse
+	if err := c.post(ctx, "/api/memory/tree", req, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
