@@ -1,0 +1,75 @@
+# ironclaw-mcp
+
+> General-purpose MCP (Model Context Protocol) server in Go that bridges
+> IronClaw — an open-source autonomous AI assistant runtime — with any
+> MCP-compatible client (Cursor, Claude Code, VS Code Copilot, Continue, Zed).
+
+## Overview
+
+- Name: ironclaw-mcp
+- Purpose: MCP server bridging IronClaw autonomous AI runtime to MCP clients; provides 13 default tools (health, chat, jobs, memory search, routines, agent spawn, metrics) via the documented IronClaw HTTP gateway API.
+- Language(s): Go
+- License: MIT
+- Authoritative README: <https://github.com/nfsarch33/ironclaw-mcp#readme>
+- Source of truth branch: `main`
+
+## Quick Start
+
+- Install:
+  ```
+  go install github.com/nfsarch33/ironclaw-mcp/cmd/ironclaw-mcp@latest
+  export IRONCLAW_BASE_URL=http://localhost:3000
+  ironclaw-mcp --version
+  ```
+- Build from source:
+  ```
+  git clone https://github.com/nfsarch33/ironclaw-mcp.git
+  cd ironclaw-mcp
+  make build
+  ./bin/ironclaw-mcp --version
+  ```
+- MCP client config (Cursor / Claude Code / VS Code Copilot):
+  ```json
+  {
+    "mcpServers": {
+      "ironclaw": {
+        "command": "ironclaw-mcp",
+        "env": {
+          "IRONCLAW_BASE_URL": "http://localhost:3000",
+          "IRONCLAW_API_KEY": "<api-key>"
+        }
+      }
+    }
+  }
+  ```
+- Smoke test: `make smoke`
+- Minimum runtime prerequisites: Go 1.24+, running IronClaw instance
+
+## Key Concepts
+
+- Architecture: `docs/architecture.md` — Cursor/Claude → stdio → ironclaw-mcp → HTTP/REST → IronClaw gateway
+- Configuration: `docs/configuration.md` — all via environment variables (`IRONCLAW_BASE_URL`, `IRONCLAW_API_KEY`, `MCP_TRANSPORT`, etc.)
+- Default tool surface: 13 tools (health, chat, jobs, memory search, routines, agent spawn, metrics)
+- Changelog: `CHANGELOG.md`
+- Testing: `make check` (tidy + fmt + vet + lint + test); coverage gate 70%, current ~84%
+
+## Runnable Examples
+
+- Smoke test all tools: `make smoke SMOKE_ARGS="--all"`
+- JSON report for CI: `./scripts/smoke-test.sh --all --report | jq '.summary'`
+- Docker: `make docker-build && make docker-run`
+
+## Related Repos
+
+- [IronClaw](https://github.com/nearai/ironclaw) — the autonomous AI runtime this server bridges
+
+## Operational Notes
+
+- Issue tracker: <https://github.com/nfsarch33/ironclaw-mcp/issues>
+- Security policy: `SECURITY.md`
+- How to contribute: `CONTRIBUTING.md`
+
+---
+
+*This file follows the emerging `llms.txt` convention adopted by cloudwego/eino,
+Anthropic tooling, and others.*
