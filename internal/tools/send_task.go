@@ -6,7 +6,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
-	"github.com/nfsarch33/ironclaw-mcp/internal/helixon"
+	"github.com/nfsarch33/helixon-mcp/internal/helixon"
 )
 
 // SendTaskHandler handles the helixon_send_task MCP tool.

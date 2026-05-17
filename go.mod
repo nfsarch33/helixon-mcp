@@ -1,4 +1,4 @@
-module github.com/nfsarch33/ironclaw-mcp
+module github.com/nfsarch33/helixon-mcp
 
 go 1.24.0
 

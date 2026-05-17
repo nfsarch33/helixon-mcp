@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/nfsarch33/ironclaw-mcp/internal/helixon"
+	"github.com/nfsarch33/helixon-mcp/internal/helixon"
 )
 
 func TestSearch_GoldenRRFOrder(t *testing.T) {

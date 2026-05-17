@@ -13,10 +13,10 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/nfsarch33/ironclaw-mcp/internal/config"
-	"github.com/nfsarch33/ironclaw-mcp/internal/helixon"
-	"github.com/nfsarch33/ironclaw-mcp/internal/server"
-	"github.com/nfsarch33/ironclaw-mcp/internal/tools"
+	"github.com/nfsarch33/helixon-mcp/internal/config"
+	"github.com/nfsarch33/helixon-mcp/internal/helixon"
+	"github.com/nfsarch33/helixon-mcp/internal/server"
+	"github.com/nfsarch33/helixon-mcp/internal/tools"
 )
 
 const version = "0.5.1"
@@ -114,6 +114,6 @@ docs/configuration.md or README.md for the full reference. Most common:
   LOG_LEVEL                      debug | info | warn | error (default info)
   PROMETHEUS_URL                 enables helixon_get_metrics tool
 
-Source: https://github.com/nfsarch33/ironclaw-mcp
+Source: https://github.com/nfsarch33/helixon-mcp
 `, version)
 }

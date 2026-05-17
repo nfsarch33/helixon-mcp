@@ -36,7 +36,7 @@ func TestRun_HelpFlag(t *testing.T) {
 	assert.Contains(t, out, "Usage:")
 	assert.Contains(t, out, "HELIXON_BASE_URL")
 	assert.Contains(t, out, "PROMETHEUS_URL")
-	assert.Contains(t, out, "Source: https://github.com/nfsarch33/ironclaw-mcp")
+	assert.Contains(t, out, "Source: https://github.com/nfsarch33/helixon-mcp")
 }
 
 func TestBuildLogger_AcceptsKnownLevels(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
-	"github.com/nfsarch33/ironclaw-mcp/internal/helixon"
+	"github.com/nfsarch33/helixon-mcp/internal/helixon"
 )
 
 // ChatHandler handles the helixon_chat MCP tool.

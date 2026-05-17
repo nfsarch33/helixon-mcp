@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/nfsarch33/ironclaw-mcp/internal/helixon"
+	"github.com/nfsarch33/helixon-mcp/internal/helixon"
 )
 
 func makeReq(args map[string]any) mcp.CallToolRequest {

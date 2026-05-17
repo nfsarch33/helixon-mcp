@@ -11,7 +11,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	mcpserver "github.com/mark3labs/mcp-go/server"
 
-	"github.com/nfsarch33/ironclaw-mcp/internal/tools"
+	"github.com/nfsarch33/helixon-mcp/internal/tools"
 )
 
 // Server wraps the MCP server and its dependencies.

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/nfsarch33/ironclaw-mcp/internal/helixon"
+	"github.com/nfsarch33/helixon-mcp/internal/helixon"
 )
 
 func discardLogger() *slog.Logger {
