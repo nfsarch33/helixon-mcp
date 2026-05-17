@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deterministic smoke test for Cursor -> ironclaw-mcp -> IronClaw.
+# Deterministic smoke test for Cursor -> helixon-mcp -> Helixon.
 #
 # Usage:
 #   ./scripts/smoke-test.sh           # default: health + one stateful tool
@@ -24,10 +24,10 @@ for arg in "$@"; do
   esac
 done
 
-BASE_URL="${IRONCLAW_BASE_URL:-http://localhost:3000}"
-API_KEY="${IRONCLAW_API_KEY:-${GATEWAY_AUTH_TOKEN:-}}"
-BINARY="${BINARY:-./bin/ironclaw-mcp}"
-STATEFUL_TOOL="${SMOKE_STATEFUL_TOOL:-ironclaw_list_jobs}"
+BASE_URL="${HELIXON_BASE_URL:-http://localhost:3000}"
+API_KEY="${HELIXON_API_KEY:-${GATEWAY_AUTH_TOKEN:-}}"
+BINARY="${BINARY:-./bin/helixon-mcp}"
+STATEFUL_TOOL="${SMOKE_STATEFUL_TOOL:-helixon_list_jobs}"
 CHAT_MESSAGE="${SMOKE_CHAT_MESSAGE:-Smoke test: reply with a short acknowledgement.}"
 TIMEOUT_SECONDS="${SMOKE_TIMEOUT_SECONDS:-45}"
 ROUTER_URL="${SMOKE_ROUTER_URL:-http://127.0.0.1:8080}"
@@ -45,7 +45,7 @@ fi
 require_router=0
 if [[ "$REQUIRE_ROUTER" == "true" ]]; then
   require_router=1
-elif [[ "$REQUIRE_ROUTER" == "auto" && "$STATEFUL_TOOL" == "ironclaw_chat" ]]; then
+elif [[ "$REQUIRE_ROUTER" == "auto" && "$STATEFUL_TOOL" == "helixon_chat" ]]; then
   require_router=1
 fi
 
@@ -62,8 +62,8 @@ elif [[ "$require_router" -eq 1 ]]; then
   total_steps=5
 fi
 
-echo "=== IronClaw MCP Smoke Test ==="
-echo "IRONCLAW_BASE_URL=$BASE_URL"
+echo "=== Helixon MCP Smoke Test ==="
+echo "HELIXON_BASE_URL=$BASE_URL"
 echo "MCP binary=$BINARY"
 if [[ "$SMOKE_ALL" -eq 1 ]]; then
   echo "Mode=--all (testing all tools)"
@@ -82,27 +82,27 @@ if [[ "$require_router" -eq 1 ]]; then
 fi
 echo
 
-echo "[1/$total_steps] Checking IronClaw gateway health at $health_url ..."
-if ! curl "${curl_args[@]}" "$health_url" >/tmp/ironclaw-smoke-health.json; then
-  echo "FAIL: IronClaw not reachable at $health_url."
-  echo "Start IronClaw first, or export IRONCLAW_BASE_URL / IRONCLAW_API_KEY for your local gateway."
+echo "[1/$total_steps] Checking Helixon gateway health at $health_url ..."
+if ! curl "${curl_args[@]}" "$health_url" >/tmp/helixon-smoke-health.json; then
+  echo "FAIL: Helixon not reachable at $health_url."
+  echo "Start Helixon first, or export HELIXON_BASE_URL / HELIXON_API_KEY for your local gateway."
   exit 1
 fi
-echo "OK: IronClaw gateway is reachable"
+echo "OK: Helixon gateway is reachable"
 echo
 
 if [[ "$require_router" -eq 1 ]]; then
   echo "[2/$total_steps] Checking local router health at $router_health_url ..."
-  if ! curl -sf "$router_health_url" >/tmp/ironclaw-smoke-router-health.json; then
+  if ! curl -sf "$router_health_url" >/tmp/helixon-smoke-router-health.json; then
     echo "FAIL: Router not reachable at $router_health_url."
     echo "Start llm-cluster-router and the local model upstreams first."
     exit 1
   fi
-  if ! curl -sf "$router_models_url" >/tmp/ironclaw-smoke-router-models.json; then
+  if ! curl -sf "$router_models_url" >/tmp/helixon-smoke-router-models.json; then
     echo "FAIL: Router model list not reachable at $router_models_url."
     exit 1
   fi
-  if [[ -n "$EXPECT_MODEL" ]] && ! python3 - "$EXPECT_MODEL" /tmp/ironclaw-smoke-router-models.json <<'PY'
+  if [[ -n "$EXPECT_MODEL" ]] && ! python3 - "$EXPECT_MODEL" /tmp/helixon-smoke-router-models.json <<'PY'
 import json
 import sys
 
@@ -129,7 +129,7 @@ else
   final_step=4
 fi
 
-echo "[$binary_step/$total_steps] Checking ironclaw-mcp binary ..."
+echo "[$binary_step/$total_steps] Checking helixon-mcp binary ..."
 if [[ ! -x "$BINARY" ]]; then
   echo "FAIL: Binary not found at $BINARY. Run: make build"
   exit 2
@@ -153,9 +153,9 @@ smoke_all = smoke_all == "1"
 smoke_report = smoke_report == "1"
 
 env = os.environ.copy()
-env["IRONCLAW_BASE_URL"] = base_url
+env["HELIXON_BASE_URL"] = base_url
 if api_key:
-    env["IRONCLAW_API_KEY"] = api_key
+    env["HELIXON_API_KEY"] = api_key
 
 proc = subprocess.Popen(
     [binary],
@@ -277,7 +277,7 @@ init_result = request(
     {
         "protocolVersion": "2024-11-05",
         "capabilities": {},
-        "clientInfo": {"name": "ironclaw-mcp-smoke", "version": "0.1.0"},
+        "clientInfo": {"name": "helixon-mcp-smoke", "version": "0.1.0"},
     },
 )
 
@@ -287,30 +287,30 @@ tools_result = request("tools/list")
 tools = {tool["name"] for tool in tools_result.get("tools", [])}
 
 all_expected = {
-    "ironclaw_health",
-    "ironclaw_chat",
-    "ironclaw_list_jobs",
-    "ironclaw_get_job",
-    "ironclaw_cancel_job",
-    "ironclaw_search_memory",
-    "ironclaw_list_routines",
-    "ironclaw_delete_routine",
-    "ironclaw_list_tools",
-    "ironclaw_stack_status",
-    "ironclaw_spawn_agent",
-    "ironclaw_send_task",
-    "ironclaw_agent_status",
+    "helixon_health",
+    "helixon_chat",
+    "helixon_list_jobs",
+    "helixon_get_job",
+    "helixon_cancel_job",
+    "helixon_search_memory",
+    "helixon_list_routines",
+    "helixon_delete_routine",
+    "helixon_list_tools",
+    "helixon_stack_status",
+    "helixon_spawn_agent",
+    "helixon_send_task",
+    "helixon_agent_status",
 }
-# ironclaw_get_metrics is conditional (only when PROMETHEUS_URL is set)
+# helixon_get_metrics is conditional (only when PROMETHEUS_URL is set)
 
 required = all_expected if smoke_all else {
-    "ironclaw_health",
-    "ironclaw_chat",
-    "ironclaw_list_jobs",
-    "ironclaw_search_memory",
-    "ironclaw_list_routines",
-    "ironclaw_delete_routine",
-    "ironclaw_list_tools",
+    "helixon_health",
+    "helixon_chat",
+    "helixon_list_jobs",
+    "helixon_search_memory",
+    "helixon_list_routines",
+    "helixon_delete_routine",
+    "helixon_list_tools",
 }
 missing = sorted(required - tools)
 if missing:
@@ -320,53 +320,53 @@ if smoke_all:
     if not smoke_report:
         print(f"Testing all {len(all_expected)} default tools (+ optional adjuncts if available):")
 
-    test_tool("ironclaw_health", {})
-    test_tool("ironclaw_list_jobs", {})
-    test_tool("ironclaw_get_job", {"job_id": "smoke-nonexistent"}, expect_error=True)
-    test_tool("ironclaw_cancel_job", {"job_id": "smoke-nonexistent"}, expect_error=True)
-    test_tool("ironclaw_search_memory", {"query": "smoke-test", "limit": "3"})
-    test_tool("ironclaw_list_routines", {})
-    test_tool("ironclaw_list_tools", {})
-    test_tool("ironclaw_stack_status", {})
-    test_tool("ironclaw_agent_status", {})
-    test_tool("ironclaw_send_task", {"message": "smoke-test: acknowledge this task"})
-    test_tool("ironclaw_spawn_agent", {"name": "smoke-test-agent", "model": "example-model", "tier": "fast"})
+    test_tool("helixon_health", {})
+    test_tool("helixon_list_jobs", {})
+    test_tool("helixon_get_job", {"job_id": "smoke-nonexistent"}, expect_error=True)
+    test_tool("helixon_cancel_job", {"job_id": "smoke-nonexistent"}, expect_error=True)
+    test_tool("helixon_search_memory", {"query": "smoke-test", "limit": "3"})
+    test_tool("helixon_list_routines", {})
+    test_tool("helixon_list_tools", {})
+    test_tool("helixon_stack_status", {})
+    test_tool("helixon_agent_status", {})
+    test_tool("helixon_send_task", {"message": "smoke-test: acknowledge this task"})
+    test_tool("helixon_spawn_agent", {"name": "smoke-test-agent", "model": "example-model", "tier": "fast"})
 
     # These tools need special handling:
-    # - ironclaw_chat requires LLM round-trip (slow, may timeout)
-    # - ironclaw_delete_routine is destructive
+    # - helixon_chat requires LLM round-trip (slow, may timeout)
+    # - helixon_delete_routine is destructive
     if not smoke_report:
-        print("  ironclaw_chat: skipped (requires LLM round-trip)")
-        print("  ironclaw_delete_routine: skipped (destructive)")
+        print("  helixon_chat: skipped (requires LLM round-trip)")
+        print("  helixon_delete_routine: skipped (destructive)")
     report_results.extend([
-        {"tool": "ironclaw_chat", "status": "skipped", "reason": "requires LLM round-trip"},
-        {"tool": "ironclaw_delete_routine", "status": "skipped", "reason": "destructive"},
+        {"tool": "helixon_chat", "status": "skipped", "reason": "requires LLM round-trip"},
+        {"tool": "helixon_delete_routine", "status": "skipped", "reason": "destructive"},
     ])
 
-    if "ironclaw_get_metrics" in tools:
-        test_tool("ironclaw_get_metrics", {})
+    if "helixon_get_metrics" in tools:
+        test_tool("helixon_get_metrics", {})
     else:
         report_results.append({
-            "tool": "ironclaw_get_metrics",
+            "tool": "helixon_get_metrics",
             "status": "skipped",
             "reason": "PROMETHEUS_URL not configured",
         })
         if not smoke_report:
-            print("  ironclaw_get_metrics: skipped (PROMETHEUS_URL not set)")
+            print("  helixon_get_metrics: skipped (PROMETHEUS_URL not set)")
 
 else:
-    health_result = call_tool("ironclaw_health", {})
+    health_result = call_tool("helixon_health", {})
     if health_result.get("isError"):
-        fail(f"FAIL: ironclaw_health returned an error: {json.dumps(health_result)}", 4)
+        fail(f"FAIL: helixon_health returned an error: {json.dumps(health_result)}", 4)
 
     stateful_args = {}
-    if stateful_tool == "ironclaw_chat":
+    if stateful_tool == "helixon_chat":
         stateful_args = {"message": chat_message}
-    elif stateful_tool == "ironclaw_search_memory":
+    elif stateful_tool == "helixon_search_memory":
         stateful_args = {"query": "smoke", "limit": "3"}
-    elif stateful_tool == "ironclaw_delete_routine":
-        fail("FAIL: ironclaw_delete_routine is destructive and cannot be used as the smoke stateful tool", 4)
-    elif stateful_tool != "ironclaw_list_jobs":
+    elif stateful_tool == "helixon_delete_routine":
+        fail("FAIL: helixon_delete_routine is destructive and cannot be used as the smoke stateful tool", 4)
+    elif stateful_tool != "helixon_list_jobs":
         fail(f"FAIL: unsupported SMOKE_STATEFUL_TOOL={stateful_tool}", 4)
 
     stateful_result = call_tool(stateful_tool, stateful_args)
@@ -392,7 +392,7 @@ else:
     else:
         print("initialize server:", init_result.get("serverInfo", {}))
         print("tools/list count:", len(tools))
-        print("ironclaw_health ok")
+        print("helixon_health ok")
         print(f"{stateful_tool} ok")
 
 try:
@@ -415,7 +415,7 @@ echo
 echo "[$final_step/$total_steps] Smoke test completed successfully"
 echo
 echo "Verified:"
-echo "  - /api/health on the IronClaw gateway"
+echo "  - /api/health on the Helixon gateway"
 if [[ "$require_router" -eq 1 ]]; then
   echo "  - /healthz on the local router"
   echo "  - /v1/models includes $EXPECT_MODEL"
@@ -425,14 +425,14 @@ echo "  - MCP tools/list"
 if [[ "$SMOKE_ALL" -eq 1 ]]; then
   echo "  - All default MCP tools (with deterministic payloads)"
 else
-  echo "  - ironclaw_health"
+  echo "  - helixon_health"
   echo "  - $STATEFUL_TOOL"
 fi
 echo
 echo "Tips:"
 echo "  - Use --all to test all default tools with deterministic payloads"
 echo "  - Use --report to get JSON output (combinable with --all)"
-echo "  - Use SMOKE_STATEFUL_TOOL=ironclaw_chat for the full local LLM round-trip"
+echo "  - Use SMOKE_STATEFUL_TOOL=helixon_chat for the full local LLM round-trip"
 echo "  - Set SMOKE_REQUIRE_ROUTER=true to force router checks for non-chat probes"
 echo "  - Override SMOKE_ROUTER_URL / SMOKE_EXPECT_MODEL when testing alternate router layouts"
-echo "  - Export IRONCLAW_API_KEY (or GATEWAY_AUTH_TOKEN) when gateway auth is enabled"
+echo "  - Export HELIXON_API_KEY (or GATEWAY_AUTH_TOKEN) when gateway auth is enabled"

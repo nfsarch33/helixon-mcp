@@ -6,10 +6,10 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
-	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
+	"github.com/nfsarch33/ironclaw-mcp/internal/helixon"
 )
 
-// SendTaskHandler handles the ironclaw_send_task MCP tool.
+// SendTaskHandler handles the helixon_send_task MCP tool.
 type SendTaskHandler struct {
 	client IronclawClient
 }
@@ -19,14 +19,14 @@ func NewSendTaskHandler(client IronclawClient) *SendTaskHandler {
 	return &SendTaskHandler{client: client}
 }
 
-// Tool returns the ironclaw_send_task MCP tool definition.
+// Tool returns the helixon_send_task MCP tool definition.
 func (h *SendTaskHandler) Tool() mcp.Tool {
 	return mcp.NewTool(
-		"ironclaw_send_task",
-		mcp.WithDescription("Send a strategic task to IronClaw for background execution via POST /api/chat/send with Bearer token auth. Returns the job ID for tracking."),
+		"helixon_send_task",
+		mcp.WithDescription("Send a strategic task to Helixon for background execution via POST /api/chat/send with Bearer token auth. Returns the job ID for tracking."),
 		mcp.WithString("message",
 			mcp.Required(),
-			mcp.Description("The strategic task or instruction to send to IronClaw."),
+			mcp.Description("The strategic task or instruction to send to Helixon."),
 		),
 		mcp.WithString("session_id",
 			mcp.Description("Optional session ID to maintain task context."),
@@ -42,7 +42,7 @@ func (h *SendTaskHandler) Handle(ctx context.Context, req mcp.CallToolRequest) (
 	}
 	sessionID := optionalString(req, "session_id")
 
-	resp, err := h.client.SendTask(ctx, ironclaw.SendTaskRequest{
+	resp, err := h.client.SendTask(ctx, helixon.SendTaskRequest{
 		Message:   message,
 		SessionID: sessionID,
 	})

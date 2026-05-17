@@ -1,8 +1,8 @@
 .PHONY: all build test lint fmt vet tidy clean docker-build docker-run coverage smoke
 
-BINARY      := ironclaw-mcp
-CMD_PATH    := ./cmd/ironclaw-mcp
-DOCKER_IMG  := ironclaw-mcp
+BINARY      := helixon-mcp
+CMD_PATH    := ./cmd/helixon-mcp
+DOCKER_IMG  := helixon-mcp
 DOCKER_TAG  := latest
 COVER_OUT   := coverage.out
 COVER_HTML  := coverage.html
@@ -55,8 +55,8 @@ docker-build:
 
 docker-run:
 	docker run --rm \
-	  -e IRONCLAW_BASE_URL=$${IRONCLAW_BASE_URL:-http://host.docker.internal:3000} \
-	  -e IRONCLAW_API_KEY=$${IRONCLAW_API_KEY:-} \
+	  -e HELIXON_BASE_URL=$${HELIXON_BASE_URL:-http://host.docker.internal:3000} \
+	  -e HELIXON_API_KEY=$${HELIXON_API_KEY:-} \
 	  $(DOCKER_IMG):$(DOCKER_TAG)
 
 # Deterministic local smoke test (pass SMOKE_ARGS="--all --report" for extended mode)

@@ -6,10 +6,10 @@ import (
 	"strconv"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
+	"github.com/nfsarch33/ironclaw-mcp/internal/helixon"
 )
 
-// WorkspaceMemoryHandler exposes IronClaw workspace memory as the four generic
+// WorkspaceMemoryHandler exposes Helixon workspace memory as the four generic
 // memory tools expected by Cursor and other MCP clients.
 type WorkspaceMemoryHandler struct {
 	client IronclawClient
@@ -24,7 +24,7 @@ func NewWorkspaceMemoryHandler(client IronclawClient) *WorkspaceMemoryHandler {
 func (h *WorkspaceMemoryHandler) SearchTool() mcp.Tool {
 	return mcp.NewTool(
 		"memory_search",
-		mcp.WithDescription("Search IronClaw workspace memory using hybrid FTS/vector RRF ranking."),
+		mcp.WithDescription("Search Helixon workspace memory using hybrid FTS/vector RRF ranking."),
 		mcp.WithString("query", mcp.Required(), mcp.Description("Search query.")),
 		mcp.WithString("limit", mcp.Description("Maximum result count (default 10).")),
 	)
@@ -34,7 +34,7 @@ func (h *WorkspaceMemoryHandler) SearchTool() mcp.Tool {
 func (h *WorkspaceMemoryHandler) WriteTool() mcp.Tool {
 	return mcp.NewTool(
 		"memory_write",
-		mcp.WithDescription("Write or replace an IronClaw workspace memory entry by path."),
+		mcp.WithDescription("Write or replace an Helixon workspace memory entry by path."),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Workspace memory path.")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Markdown or text content to store.")),
 	)
@@ -44,7 +44,7 @@ func (h *WorkspaceMemoryHandler) WriteTool() mcp.Tool {
 func (h *WorkspaceMemoryHandler) ReadTool() mcp.Tool {
 	return mcp.NewTool(
 		"memory_read",
-		mcp.WithDescription("Read a single IronClaw workspace memory entry by path."),
+		mcp.WithDescription("Read a single Helixon workspace memory entry by path."),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Workspace memory path.")),
 	)
 }
@@ -53,7 +53,7 @@ func (h *WorkspaceMemoryHandler) ReadTool() mcp.Tool {
 func (h *WorkspaceMemoryHandler) TreeTool() mcp.Tool {
 	return mcp.NewTool(
 		"memory_tree",
-		mcp.WithDescription("List IronClaw workspace memory paths below a prefix."),
+		mcp.WithDescription("List Helixon workspace memory paths below a prefix."),
 		mcp.WithString("prefix", mcp.Description("Optional path prefix.")),
 	)
 }
@@ -72,7 +72,7 @@ func (h *WorkspaceMemoryHandler) HandleSearch(ctx context.Context, req mcp.CallT
 		}
 		limit = n
 	}
-	resp, err := h.client.SearchMemory(ctx, ironclaw.MemorySearchRequest{Query: query, Limit: limit})
+	resp, err := h.client.SearchMemory(ctx, helixon.MemorySearchRequest{Query: query, Limit: limit})
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("searching memory: %v", err)), nil
 	}
@@ -89,7 +89,7 @@ func (h *WorkspaceMemoryHandler) HandleWrite(ctx context.Context, req mcp.CallTo
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	resp, err := h.client.WriteMemory(ctx, ironclaw.MemoryWriteRequest{Path: path, Content: content})
+	resp, err := h.client.WriteMemory(ctx, helixon.MemoryWriteRequest{Path: path, Content: content})
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("writing memory: %v", err)), nil
 	}
@@ -102,7 +102,7 @@ func (h *WorkspaceMemoryHandler) HandleRead(ctx context.Context, req mcp.CallToo
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	resp, err := h.client.ReadMemory(ctx, ironclaw.MemoryReadRequest{Path: path})
+	resp, err := h.client.ReadMemory(ctx, helixon.MemoryReadRequest{Path: path})
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("reading memory: %v", err)), nil
 	}
@@ -111,7 +111,7 @@ func (h *WorkspaceMemoryHandler) HandleRead(ctx context.Context, req mcp.CallToo
 
 // HandleTree executes memory_tree.
 func (h *WorkspaceMemoryHandler) HandleTree(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	resp, err := h.client.TreeMemory(ctx, ironclaw.MemoryTreeRequest{Prefix: optionalString(req, "prefix")})
+	resp, err := h.client.TreeMemory(ctx, helixon.MemoryTreeRequest{Prefix: optionalString(req, "prefix")})
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("listing memory tree: %v", err)), nil
 	}

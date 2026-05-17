@@ -1,4 +1,4 @@
-// Package main is the entry point for the IronClaw MCP server.
+// Package main is the entry point for the Helixon MCP server.
 package main
 
 import (
@@ -14,7 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/nfsarch33/ironclaw-mcp/internal/config"
-	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
+	"github.com/nfsarch33/ironclaw-mcp/internal/helixon"
 	"github.com/nfsarch33/ironclaw-mcp/internal/server"
 	"github.com/nfsarch33/ironclaw-mcp/internal/tools"
 )
@@ -32,7 +32,7 @@ func run() error {
 	for _, arg := range os.Args[1:] {
 		switch arg {
 		case "--version", "-version", "version":
-			fmt.Printf("ironclaw-mcp %s\n", version)
+			fmt.Printf("helixon-mcp %s\n", version)
 			return nil
 		case "--help", "-h", "help":
 			printUsage()
@@ -47,14 +47,14 @@ func run() error {
 
 	logger := buildLogger(cfg.LogLevel)
 
-	logger.Info("starting ironclaw-mcp",
+	logger.Info("starting helixon-mcp",
 		"version", version,
-		"ironclaw_url", cfg.IronclawBaseURL,
+		"helixon_url", cfg.IronclawBaseURL,
 		"transport", cfg.Transport,
 		"auth_configured", cfg.APIKey != "",
 	)
 
-	client := ironclaw.NewClient(cfg.IronclawBaseURL, cfg.APIKey, cfg.Timeout)
+	client := helixon.NewClient(cfg.IronclawBaseURL, cfg.APIKey, cfg.Timeout)
 
 	var prom tools.PrometheusQuerier
 	if cfg.PrometheusURL != "" {
@@ -96,23 +96,23 @@ func buildLogger(level string) *slog.Logger {
 }
 
 func printUsage() {
-	fmt.Printf(`ironclaw-mcp %s
+	fmt.Printf(`helixon-mcp %s
 
-A general-purpose MCP server bridging IronClaw with MCP-compatible AI clients.
+A general-purpose MCP server bridging Helixon with MCP-compatible AI clients.
 
 Usage:
-  ironclaw-mcp [--version | --help]
+  helixon-mcp [--version | --help]
 
 The server is configured entirely through environment variables; see
 docs/configuration.md or README.md for the full reference. Most common:
 
-  IRONCLAW_BASE_URL              IronClaw gateway URL (default http://localhost:3000)
-  IRONCLAW_API_KEY               Bearer token when GATEWAY_AUTH_TOKEN is set
-  IRONCLAW_ALLOW_NON_LOCALHOST   Allow non-loopback IRONCLAW_BASE_URL (default false)
+  HELIXON_BASE_URL              Helixon gateway URL (default http://localhost:3000)
+  HELIXON_API_KEY               Bearer token when GATEWAY_AUTH_TOKEN is set
+  HELIXON_ALLOW_NON_LOCALHOST   Allow non-loopback HELIXON_BASE_URL (default false)
   MCP_TRANSPORT                  stdio | sse (default stdio)
   MCP_SSE_ADDR                   bind address for sse (default :8080)
   LOG_LEVEL                      debug | info | warn | error (default info)
-  PROMETHEUS_URL                 enables ironclaw_get_metrics tool
+  PROMETHEUS_URL                 enables helixon_get_metrics tool
 
 Source: https://github.com/nfsarch33/ironclaw-mcp
 `, version)

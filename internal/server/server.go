@@ -25,7 +25,7 @@ type Server struct {
 	toolCount int
 }
 
-// New creates and configures a new MCP Server with the generic IronClaw gateway
+// New creates and configures a new MCP Server with the generic Helixon gateway
 // tools plus optional Prometheus metrics support.
 func New(client tools.IronclawClient, prom tools.PrometheusQuerier, logger *slog.Logger, version string) *Server {
 	if logger == nil {
@@ -43,7 +43,7 @@ func New(client tools.IronclawClient, prom tools.PrometheusQuerier, logger *slog
 
 func (s *Server) buildMCPServer() *mcpserver.MCPServer {
 	srv := mcpserver.NewMCPServer(
-		"ironclaw-mcp",
+		"helixon-mcp",
 		s.version,
 		mcpserver.WithToolCapabilities(true),
 	)

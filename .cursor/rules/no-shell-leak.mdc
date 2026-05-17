@@ -14,7 +14,7 @@ transcript visible to a model. Sensitive identifiers include:
 - Bearer tokens, JFrog tokens, GitHub PATs, AWS bearer tokens, HuggingFace
   tokens, 1Password Service Account tokens, or any credential string
 - Private repo absolute paths (`/Users/jason.lian/ai-agent-business-stack`,
-  `/Users/jason.lian/ironclaw`, ...)
+  `/Users/jason.lian/helixon`, ...)
 - Container names tied to private GPU hosts
 - Git author email, signing identity selection, and hostname pairs
 - OCI instance IDs (`ocid1.*`), tenancy IDs, and compartment IDs
@@ -64,11 +64,11 @@ names defined in `$HOME/.config/runx/config.yaml`:
 
 ## Repo aliases (33 registered as of v299)
 
-business, global-kb, ironclaw, openclaw, runx, ironclaw-mcp, ironclaw-ops,
+business, global-kb, helixon, openclaw, runx, helixon-mcp, helixon-ops,
 mission-control, pdf-mcp, linkedin-mcp, upwork-mcp, hermes, gstack, router,
 autoresearch, openclaw-rl, agentic-research, skills, academic-skills,
 secure-auth, windows-mcp, chromedp, auto-research-sleep, memo,
-cursor-tools, fleet-bench, offload-telemetry, cylrl, ansible-win,
+cursor-tools, fleet-bench, offload-telemetry, helixon, ansible-win,
 **uiauto-framework, uiauto-zendesk-scenarios, screen-unblocker, resume**.
 
 Drift gate: `runx config check-aliases v299` must return `ok: 33/33 v299 aliases present` (added in `runx` PR #5).

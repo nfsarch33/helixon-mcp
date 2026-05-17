@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
+	"github.com/nfsarch33/ironclaw-mcp/internal/helixon"
 )
 
-// fakeGateway simulates IronClaw API endpoints for integration testing.
+// fakeGateway simulates Helixon API endpoints for integration testing.
 // Routes are registered via a map keyed on "METHOD /path".
 type fakeGateway struct {
 	routes map[string]http.HandlerFunc
@@ -49,12 +49,12 @@ func jsonResponse(w http.ResponseWriter, v any) {
 	}
 }
 
-// setupGateway registers all standard IronClaw endpoints returning realistic responses.
+// setupGateway registers all standard Helixon endpoints returning realistic responses.
 func setupGateway() *fakeGateway {
 	gw := newFakeGateway()
 
 	gw.handle("GET", "/api/health", func(w http.ResponseWriter, _ *http.Request) {
-		jsonResponse(w, ironclaw.HealthResponse{Status: "ok", Channel: "gateway"})
+		jsonResponse(w, helixon.HealthResponse{Status: "ok", Channel: "gateway"})
 	})
 
 	gw.handle("POST", "/api/chat/send", func(w http.ResponseWriter, r *http.Request) {
@@ -71,8 +71,8 @@ func setupGateway() *fakeGateway {
 	})
 
 	gw.handle("GET", "/api/jobs", func(w http.ResponseWriter, _ *http.Request) {
-		jsonResponse(w, ironclaw.JobsResponse{
-			Jobs: []ironclaw.Job{
+		jsonResponse(w, helixon.JobsResponse{
+			Jobs: []helixon.Job{
 				{ID: "j1", State: "completed", Title: "test-job-1"},
 				{ID: "j2", State: "in_progress", Title: "test-job-2"},
 			},
@@ -80,7 +80,7 @@ func setupGateway() *fakeGateway {
 	})
 
 	gw.handle("GET", "/api/jobs/j1", func(w http.ResponseWriter, _ *http.Request) {
-		jsonResponse(w, ironclaw.Job{ID: "j1", State: "completed", Title: "test-job-1"})
+		jsonResponse(w, helixon.Job{ID: "j1", State: "completed", Title: "test-job-1"})
 	})
 
 	gw.handle("POST", "/api/jobs/j99/cancel", func(w http.ResponseWriter, _ *http.Request) {
@@ -89,21 +89,21 @@ func setupGateway() *fakeGateway {
 	})
 
 	gw.handle("POST", "/api/memory/search", func(w http.ResponseWriter, r *http.Request) {
-		var body ironclaw.MemorySearchRequest
+		var body helixon.MemorySearchRequest
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "bad json", http.StatusBadRequest)
 			return
 		}
-		jsonResponse(w, ironclaw.MemorySearchResponse{
-			Results: []ironclaw.MemoryEntry{
+		jsonResponse(w, helixon.MemorySearchResponse{
+			Results: []helixon.MemoryEntry{
 				{Path: "notes/go.md", Content: "Go patterns for " + body.Query, Score: 0.95},
 			},
 		})
 	})
 
 	gw.handle("GET", "/api/routines", func(w http.ResponseWriter, _ *http.Request) {
-		jsonResponse(w, ironclaw.RoutinesResponse{
-			Routines: []ironclaw.Routine{
+		jsonResponse(w, helixon.RoutinesResponse{
+			Routines: []helixon.Routine{
 				{ID: "r1", Name: "daily-report", Enabled: true, TriggerType: "cron"},
 			},
 		})
@@ -115,8 +115,8 @@ func setupGateway() *fakeGateway {
 	})
 
 	gw.handle("GET", "/api/extensions/tools", func(w http.ResponseWriter, _ *http.Request) {
-		jsonResponse(w, ironclaw.ToolsResponse{
-			Tools: []ironclaw.ToolInfo{
+		jsonResponse(w, helixon.ToolsResponse{
+			Tools: []helixon.ToolInfo{
 				{Name: "web_fetch", Description: "Fetch a URL"},
 				{Name: "shell", Description: "Execute shell command"},
 			},
@@ -124,7 +124,7 @@ func setupGateway() *fakeGateway {
 	})
 
 	gw.handle("GET", "/api/gateway/status", func(w http.ResponseWriter, _ *http.Request) {
-		jsonResponse(w, ironclaw.GatewayStatusResponse{
+		jsonResponse(w, helixon.GatewayStatusResponse{
 			Status:      "ok",
 			Uptime:      "24h",
 			Connections: 3,
@@ -138,11 +138,11 @@ func setupGateway() *fakeGateway {
 func setupRouter() *fakeGateway {
 	router := newFakeGateway()
 	router.handle("GET", "/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		jsonResponse(w, ironclaw.RouterHealthResponse{
+		jsonResponse(w, helixon.RouterHealthResponse{
 			OK:           true,
 			HealthyNodes: 2,
 			TotalNodes:   2,
-			Nodes: []ironclaw.RouterNode{
+			Nodes: []helixon.RouterNode{
 				{Name: "example-agent", Tier: "agent", Healthy: true},
 				{Name: "example-fast", Tier: "fast", Healthy: true},
 			},
@@ -151,8 +151,8 @@ func setupRouter() *fakeGateway {
 	return router
 }
 
-func newIntegrationClient(baseURL string) *ironclaw.Client {
-	return ironclaw.NewClientWithHTTP(baseURL, "test-api-key", http.DefaultClient)
+func newIntegrationClient(baseURL string) *helixon.Client {
+	return helixon.NewClientWithHTTP(baseURL, "test-api-key", http.DefaultClient)
 }
 
 func extractJSON(t *testing.T, res *mcp.CallToolResult) map[string]any {
@@ -182,7 +182,7 @@ func TestIntegration_Health_OK(t *testing.T) {
 }
 
 func TestIntegration_Health_ServerDown(t *testing.T) {
-	client := ironclaw.NewClientWithHTTP("http://127.0.0.1:1", "key", http.DefaultClient)
+	client := helixon.NewClientWithHTTP("http://127.0.0.1:1", "key", http.DefaultClient)
 	h := NewHealthHandler(client)
 	res, err := h.Handle(context.Background(), makeReq(nil))
 	require.NoError(t, err)
@@ -520,12 +520,12 @@ func TestIntegration_BearerAuthHeader(t *testing.T) {
 	gw := newFakeGateway()
 	gw.handle("GET", "/api/health", func(w http.ResponseWriter, r *http.Request) {
 		receivedAuth = r.Header.Get("Authorization")
-		jsonResponse(w, ironclaw.HealthResponse{Status: "ok"})
+		jsonResponse(w, helixon.HealthResponse{Status: "ok"})
 	})
 	ts := gw.start()
 	defer ts.Close()
 
-	client := ironclaw.NewClientWithHTTP(ts.URL, "my-secret-token", http.DefaultClient)
+	client := helixon.NewClientWithHTTP(ts.URL, "my-secret-token", http.DefaultClient)
 	h := NewHealthHandler(client)
 	_, err := h.Handle(context.Background(), makeReq(nil))
 	require.NoError(t, err)
@@ -537,12 +537,12 @@ func TestIntegration_NoAuthWhenKeyEmpty(t *testing.T) {
 	gw := newFakeGateway()
 	gw.handle("GET", "/api/health", func(w http.ResponseWriter, r *http.Request) {
 		receivedAuth = r.Header.Get("Authorization")
-		jsonResponse(w, ironclaw.HealthResponse{Status: "ok"})
+		jsonResponse(w, helixon.HealthResponse{Status: "ok"})
 	})
 	ts := gw.start()
 	defer ts.Close()
 
-	client := ironclaw.NewClientWithHTTP(ts.URL, "", http.DefaultClient)
+	client := helixon.NewClientWithHTTP(ts.URL, "", http.DefaultClient)
 	h := NewHealthHandler(client)
 	_, err := h.Handle(context.Background(), makeReq(nil))
 	require.NoError(t, err)

@@ -21,10 +21,10 @@ order = 2
 
 [[layers]]
 name = "gateway_client"
-paths = ["internal/ironclaw/*", "internal/config/*"]
+paths = ["internal/helixon/*", "internal/config/*"]
 order = 3
 
 [[boundaries]]
-from = "internal/ironclaw/*"
+from = "internal/helixon/*"
 to = "internal/tools/*"
 reason = "Gateway client must remain generic and independent of MCP tool handlers."

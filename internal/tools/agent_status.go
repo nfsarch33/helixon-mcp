@@ -7,7 +7,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-// AgentStatusHandler handles the ironclaw_agent_status MCP tool.
+// AgentStatusHandler handles the helixon_agent_status MCP tool.
 type AgentStatusHandler struct {
 	client IronclawClient
 }
@@ -17,11 +17,11 @@ func NewAgentStatusHandler(client IronclawClient) *AgentStatusHandler {
 	return &AgentStatusHandler{client: client}
 }
 
-// Tool returns the ironclaw_agent_status MCP tool definition.
+// Tool returns the helixon_agent_status MCP tool definition.
 func (h *AgentStatusHandler) Tool() mcp.Tool {
 	return mcp.NewTool(
-		"ironclaw_agent_status",
-		mcp.WithDescription("Get the current IronClaw agent status including thread states, active/total job counts, and last heartbeat time."),
+		"helixon_agent_status",
+		mcp.WithDescription("Get the current Helixon agent status including thread states, active/total job counts, and last heartbeat time."),
 	)
 }
 

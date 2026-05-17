@@ -1,5 +1,5 @@
-// Package ironclaw provides an HTTP client for the IronClaw REST API.
-package ironclaw
+// Package helixon provides an HTTP client for the Helixon REST API.
+package helixon
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ const MaxResponseBytes = 10 << 20 // 10 MiB
 
 const chatPollInterval = 250 * time.Millisecond
 
-// Client is an HTTP client for the IronClaw web gateway API.
+// Client is an HTTP client for the Helixon web gateway API.
 type Client struct {
 	baseURL    string
 	apiKey     string
@@ -61,7 +61,7 @@ type ChatRequest struct {
 	SessionID string `json:"session_id,omitempty"`
 }
 
-// ChatResponse is returned once the async IronClaw chat turn has completed.
+// ChatResponse is returned once the async Helixon chat turn has completed.
 type ChatResponse struct {
 	Response  string `json:"response"`
 	MessageID string `json:"message_id,omitempty"`
@@ -69,7 +69,7 @@ type ChatResponse struct {
 	Status    string `json:"status,omitempty"`
 }
 
-// Job represents a background job in IronClaw.
+// Job represents a background job in Helixon.
 type Job struct {
 	ID        string `json:"id"`
 	Title     string `json:"title,omitempty"`
@@ -145,7 +145,7 @@ type MemoryTreeResponse struct {
 	Entries []MemoryTreeEntry `json:"entries"`
 }
 
-// Routine represents an IronClaw scheduled routine.
+// Routine represents an Helixon scheduled routine.
 type Routine struct {
 	ID                  string `json:"id"`
 	Name                string `json:"name"`
@@ -166,7 +166,7 @@ type RoutinesResponse struct {
 	Routines []Routine `json:"routines"`
 }
 
-// ToolInfo represents a registered IronClaw tool.
+// ToolInfo represents a registered Helixon tool.
 type ToolInfo struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
@@ -298,7 +298,7 @@ type historyToolCall struct {
 
 // --- API methods -------------------------------------------------------------
 
-// Health checks whether IronClaw is reachable and healthy.
+// Health checks whether Helixon is reachable and healthy.
 func (c *Client) Health(ctx context.Context) (*HealthResponse, error) {
 	var resp HealthResponse
 	if err := c.get(ctx, "/api/health", &resp); err != nil {
@@ -307,7 +307,7 @@ func (c *Client) Health(ctx context.Context) (*HealthResponse, error) {
 	return &resp, nil
 }
 
-// Chat sends a message to IronClaw, then polls history until a response is available.
+// Chat sends a message to Helixon, then polls history until a response is available.
 func (c *Client) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
 	threadID, err := c.resolveThreadID(ctx, req.SessionID)
 	if err != nil {
@@ -340,7 +340,7 @@ func (c *Client) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, erro
 	}, nil
 }
 
-// ListJobs returns all jobs from IronClaw.
+// ListJobs returns all jobs from Helixon.
 func (c *Client) ListJobs(ctx context.Context) (*JobsResponse, error) {
 	var resp JobsResponse
 	if err := c.get(ctx, "/api/jobs", &resp); err != nil {
@@ -363,7 +363,7 @@ func (c *Client) CancelJob(ctx context.Context, jobID string) error {
 	return c.post(ctx, fmt.Sprintf("/api/jobs/%s/cancel", jobID), nil, nil)
 }
 
-// SearchMemory searches the IronClaw workspace memory.
+// SearchMemory searches the Helixon workspace memory.
 func (c *Client) SearchMemory(ctx context.Context, req MemorySearchRequest) (*MemorySearchResponse, error) {
 	var resp MemorySearchResponse
 	if err := c.post(ctx, "/api/memory/search", req, &resp); err != nil {
@@ -445,7 +445,7 @@ func (c *Client) StackStatus(ctx context.Context, routerURL string) (*StackStatu
 	return result, nil
 }
 
-// SpawnAgent creates a new agent job in IronClaw.
+// SpawnAgent creates a new agent job in Helixon.
 func (c *Client) SpawnAgent(ctx context.Context, req SpawnAgentRequest) (*SpawnAgentResponse, error) {
 	chatReq := chatSendRequest{
 		Content: fmt.Sprintf("[spawn-agent] name=%s model=%s tier=%s", req.Name, req.Model, req.Tier),
@@ -461,7 +461,7 @@ func (c *Client) SpawnAgent(ctx context.Context, req SpawnAgentRequest) (*SpawnA
 	}, nil
 }
 
-// SendTask sends a strategic task to IronClaw for background execution.
+// SendTask sends a strategic task to Helixon for background execution.
 func (c *Client) SendTask(ctx context.Context, req SendTaskRequest) (*SendTaskResponse, error) {
 	var resp SendTaskResponse
 	if err := c.post(ctx, "/api/chat/send", req, &resp); err != nil {
@@ -561,7 +561,7 @@ func (c *Client) do(req *http.Request, out interface{}) error {
 
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(limited)
-		return fmt.Errorf("ironclaw API error %d: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("helixon API error %d: %s", resp.StatusCode, string(body))
 	}
 
 	if out == nil {

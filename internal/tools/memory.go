@@ -7,7 +7,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
-	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
+	"github.com/nfsarch33/ironclaw-mcp/internal/helixon"
 )
 
 // MemoryHandler handles memory-related MCP tools.
@@ -20,11 +20,11 @@ func NewMemoryHandler(client IronclawClient) *MemoryHandler {
 	return &MemoryHandler{client: client}
 }
 
-// Tool returns the ironclaw_search_memory tool definition.
+// Tool returns the helixon_search_memory tool definition.
 func (h *MemoryHandler) Tool() mcp.Tool {
 	return mcp.NewTool(
-		"ironclaw_search_memory",
-		mcp.WithDescription("Search IronClaw's persistent workspace memory using semantic search. Returns relevant notes, context, and previously stored information."),
+		"helixon_search_memory",
+		mcp.WithDescription("Search Helixon's persistent workspace memory using semantic search. Returns relevant notes, context, and previously stored information."),
 		mcp.WithString("query",
 			mcp.Required(),
 			mcp.Description("The search query to find relevant memory entries."),
@@ -49,7 +49,7 @@ func (h *MemoryHandler) Handle(ctx context.Context, req mcp.CallToolRequest) (*m
 		}
 	}
 
-	resp, err := h.client.SearchMemory(ctx, ironclaw.MemorySearchRequest{
+	resp, err := h.client.SearchMemory(ctx, helixon.MemorySearchRequest{
 		Query: query,
 		Limit: limit,
 	})

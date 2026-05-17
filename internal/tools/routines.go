@@ -17,19 +17,19 @@ func NewRoutinesHandler(client IronclawClient) *RoutinesHandler {
 	return &RoutinesHandler{client: client}
 }
 
-// ListRoutinesTool returns the ironclaw_list_routines tool definition.
+// ListRoutinesTool returns the helixon_list_routines tool definition.
 func (h *RoutinesHandler) ListRoutinesTool() mcp.Tool {
 	return mcp.NewTool(
-		"ironclaw_list_routines",
-		mcp.WithDescription("List all scheduled routines in IronClaw (cron jobs, event triggers)."),
+		"helixon_list_routines",
+		mcp.WithDescription("List all scheduled routines in Helixon (cron jobs, event triggers)."),
 	)
 }
 
-// DeleteRoutineTool returns the ironclaw_delete_routine tool definition.
+// DeleteRoutineTool returns the helixon_delete_routine tool definition.
 func (h *RoutinesHandler) DeleteRoutineTool() mcp.Tool {
 	return mcp.NewTool(
-		"ironclaw_delete_routine",
-		mcp.WithDescription("Delete a scheduled routine from IronClaw by ID."),
+		"helixon_delete_routine",
+		mcp.WithDescription("Delete a scheduled routine from Helixon by ID."),
 		mcp.WithString("routine_id",
 			mcp.Required(),
 			mcp.Description("The routine ID to delete."),

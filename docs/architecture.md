@@ -1,8 +1,8 @@
 # Architecture
 
-`ironclaw-mcp` is a small bridge between MCP clients and the IronClaw HTTP
+`helixon-mcp` is a small bridge between MCP clients and the Helixon HTTP
 gateway. The default surface is deployment-agnostic: handlers translate MCP tool
-calls into documented IronClaw HTTP requests and return structured tool results.
+calls into documented Helixon HTTP requests and return structured tool results.
 
 ```text
 MCP client
@@ -10,30 +10,30 @@ MCP client
         |
         | stdio or SSE
         v
-ironclaw-mcp
+helixon-mcp
         |
         | internal/server
         v
 internal/tools handlers
         |
-        | internal/ironclaw.Client
+        | internal/helixon.Client
         v
-IronClaw HTTP gateway
+Helixon HTTP gateway
 ```
 
 ## Packages
 
 | Package | Responsibility |
 |---|---|
-| `cmd/ironclaw-mcp` | Entrypoint, env loading, transport startup, basic `--help` and `--version`. |
+| `cmd/helixon-mcp` | Entrypoint, env loading, transport startup, basic `--help` and `--version`. |
 | `internal/config` | Environment parsing and validation. |
 | `internal/server` | MCP server construction and tool registration. |
 | `internal/tools` | MCP tool schemas and handlers. |
-| `internal/ironclaw` | HTTP client for IronClaw gateway endpoints. |
+| `internal/helixon` | HTTP client for Helixon gateway endpoints. |
 
 ## Default tool registration
 
-The default server registers only generic IronClaw gateway tools:
+The default server registers only generic Helixon gateway tools:
 
 - health
 - chat

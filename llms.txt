@@ -1,13 +1,13 @@
-# ironclaw-mcp
+# helixon-mcp
 
 > General-purpose MCP (Model Context Protocol) server in Go that bridges
-> IronClaw — an open-source autonomous AI assistant runtime — with any
+> Helixon — an open-source autonomous AI assistant runtime — with any
 > MCP-compatible client (Cursor, Claude Code, VS Code Copilot, Continue, Zed).
 
 ## Overview
 
-- Name: ironclaw-mcp
-- Purpose: MCP server bridging IronClaw autonomous AI runtime to MCP clients; provides 13 default tools (health, chat, jobs, memory search, routines, agent spawn, metrics) via the documented IronClaw HTTP gateway API.
+- Name: helixon-mcp
+- Purpose: MCP server bridging Helixon autonomous AI runtime to MCP clients; provides 13 default tools (health, chat, jobs, memory search, routines, agent spawn, metrics) via the documented Helixon HTTP gateway API.
 - Language(s): Go
 - License: MIT
 - Authoritative README: <https://github.com/nfsarch33/ironclaw-mcp#readme>
@@ -17,38 +17,38 @@
 
 - Install:
   ```
-  go install github.com/nfsarch33/ironclaw-mcp/cmd/ironclaw-mcp@latest
-  export IRONCLAW_BASE_URL=http://localhost:3000
-  ironclaw-mcp --version
+  go install github.com/nfsarch33/ironclaw-mcp/cmd/helixon-mcp@latest
+  export HELIXON_BASE_URL=http://localhost:3000
+  helixon-mcp --version
   ```
 - Build from source:
   ```
   git clone https://github.com/nfsarch33/ironclaw-mcp.git
-  cd ironclaw-mcp
+  cd helixon-mcp
   make build
-  ./bin/ironclaw-mcp --version
+  ./bin/helixon-mcp --version
   ```
 - MCP client config (Cursor / Claude Code / VS Code Copilot):
   ```json
   {
     "mcpServers": {
-      "ironclaw": {
-        "command": "ironclaw-mcp",
+      "helixon": {
+        "command": "helixon-mcp",
         "env": {
-          "IRONCLAW_BASE_URL": "http://localhost:3000",
-          "IRONCLAW_API_KEY": "<api-key>"
+          "HELIXON_BASE_URL": "http://localhost:3000",
+          "HELIXON_API_KEY": "<api-key>"
         }
       }
     }
   }
   ```
 - Smoke test: `make smoke`
-- Minimum runtime prerequisites: Go 1.24+, running IronClaw instance
+- Minimum runtime prerequisites: Go 1.24+, running Helixon instance
 
 ## Key Concepts
 
-- Architecture: `docs/architecture.md` — Cursor/Claude → stdio → ironclaw-mcp → HTTP/REST → IronClaw gateway
-- Configuration: `docs/configuration.md` — all via environment variables (`IRONCLAW_BASE_URL`, `IRONCLAW_API_KEY`, `MCP_TRANSPORT`, etc.)
+- Architecture: `docs/architecture.md` — Cursor/Claude → stdio → helixon-mcp → HTTP/REST → Helixon gateway
+- Configuration: `docs/configuration.md` — all via environment variables (`HELIXON_BASE_URL`, `HELIXON_API_KEY`, `MCP_TRANSPORT`, etc.)
 - Default tool surface: 13 tools (health, chat, jobs, memory search, routines, agent spawn, metrics)
 - Changelog: `CHANGELOG.md`
 - Testing: `make check` (tidy + fmt + vet + lint + test); coverage gate 70%, current ~84%
@@ -61,7 +61,7 @@
 
 ## Related Repos
 
-- [IronClaw](https://github.com/nearai/ironclaw) — the autonomous AI runtime this server bridges
+- [Helixon](https://github.com/nearai/helixon) — the autonomous AI runtime this server bridges
 
 ## Operational Notes
 

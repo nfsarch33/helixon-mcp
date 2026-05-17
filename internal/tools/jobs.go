@@ -17,19 +17,19 @@ func NewJobsHandler(client IronclawClient) *JobsHandler {
 	return &JobsHandler{client: client}
 }
 
-// ListJobsTool returns the ironclaw_list_jobs tool definition.
+// ListJobsTool returns the helixon_list_jobs tool definition.
 func (h *JobsHandler) ListJobsTool() mcp.Tool {
 	return mcp.NewTool(
-		"ironclaw_list_jobs",
-		mcp.WithDescription("List all background jobs in IronClaw, including their status (running, done, failed)."),
+		"helixon_list_jobs",
+		mcp.WithDescription("List all background jobs in Helixon, including their status (running, done, failed)."),
 	)
 }
 
-// GetJobTool returns the ironclaw_get_job tool definition.
+// GetJobTool returns the helixon_get_job tool definition.
 func (h *JobsHandler) GetJobTool() mcp.Tool {
 	return mcp.NewTool(
-		"ironclaw_get_job",
-		mcp.WithDescription("Get details of a specific IronClaw background job by ID."),
+		"helixon_get_job",
+		mcp.WithDescription("Get details of a specific Helixon background job by ID."),
 		mcp.WithString("job_id",
 			mcp.Required(),
 			mcp.Description("The job ID to retrieve."),
@@ -37,11 +37,11 @@ func (h *JobsHandler) GetJobTool() mcp.Tool {
 	)
 }
 
-// CancelJobTool returns the ironclaw_cancel_job tool definition.
+// CancelJobTool returns the helixon_cancel_job tool definition.
 func (h *JobsHandler) CancelJobTool() mcp.Tool {
 	return mcp.NewTool(
-		"ironclaw_cancel_job",
-		mcp.WithDescription("Cancel a running IronClaw background job."),
+		"helixon_cancel_job",
+		mcp.WithDescription("Cancel a running Helixon background job."),
 		mcp.WithString("job_id",
 			mcp.Required(),
 			mcp.Description("The job ID to cancel."),

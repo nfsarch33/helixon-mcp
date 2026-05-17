@@ -10,15 +10,15 @@ import (
 
 // Default PromQL queries for key agent metrics.
 var defaultMetricQueries = map[string]string{
-	"llm_calls_total":     `sum(ironclaw_llm_calls_total)`,
-	"llm_tokens_total":    `sum(ironclaw_llm_tokens_total)`,
+	"llm_calls_total":     `sum(helixon_llm_calls_total)`,
+	"llm_tokens_total":    `sum(helixon_llm_tokens_total)`,
 	"gpu_vram_used_bytes": `DCGM_FI_DEV_FB_USED`,
 	"gpu_vram_free_bytes": `DCGM_FI_DEV_FB_FREE`,
 	"router_health":       `up{job="llm-cluster-router"}`,
-	"active_jobs":         `ironclaw_active_jobs`,
+	"active_jobs":         `helixon_active_jobs`,
 }
 
-// GetMetricsHandler handles the ironclaw_get_metrics MCP tool.
+// GetMetricsHandler handles the helixon_get_metrics MCP tool.
 type GetMetricsHandler struct {
 	prom PrometheusQuerier
 }
@@ -28,11 +28,11 @@ func NewGetMetricsHandler(prom PrometheusQuerier) *GetMetricsHandler {
 	return &GetMetricsHandler{prom: prom}
 }
 
-// Tool returns the ironclaw_get_metrics MCP tool definition.
+// Tool returns the helixon_get_metrics MCP tool definition.
 func (h *GetMetricsHandler) Tool() mcp.Tool {
 	return mcp.NewTool(
-		"ironclaw_get_metrics",
-		mcp.WithDescription("Query Prometheus for key IronClaw agent metrics: LLM calls, token usage, GPU VRAM, router health, and active jobs. Optionally pass a custom PromQL query."),
+		"helixon_get_metrics",
+		mcp.WithDescription("Query Prometheus for key Helixon agent metrics: LLM calls, token usage, GPU VRAM, router health, and active jobs. Optionally pass a custom PromQL query."),
 		mcp.WithString("query",
 			mcp.Description("Optional custom PromQL query. If omitted, returns all default agent metrics."),
 		),

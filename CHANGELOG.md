@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `ironclaw-mcp` are recorded in this file. The format
+All notable changes to `helixon-mcp` are recorded in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -9,13 +9,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Planned
 
 - v1.0.0 release: dedicated CLI binary, not just an MCP server.
-  - `ironclaw-mcp serve` (current behaviour, default)
-  - `ironclaw-mcp doctor` (config + IronClaw connectivity probes)
-  - `ironclaw-mcp tools list|describe|invoke`
-  - `ironclaw-mcp smoke` (replaces `scripts/smoke-test.sh`)
-- Push `internal/tools` and `internal/ironclaw` test coverage to >= 80 %
+  - `helixon-mcp serve` (current behaviour, default)
+  - `helixon-mcp doctor` (config + Helixon connectivity probes)
+  - `helixon-mcp tools list|describe|invoke`
+  - `helixon-mcp smoke` (replaces `scripts/smoke-test.sh`)
+- Push `internal/tools` and `internal/helixon` test coverage to >= 80 %
   using the existing `httptest.NewServer` mock harness.
-- Add `cmd/ironclaw-mcp` integration tests covering CLI flag parsing,
+- Add `cmd/helixon-mcp` integration tests covering CLI flag parsing,
   graceful shutdown, and SSE transport setup.
 
 ## [0.5.1] - 2026-05-01
@@ -26,7 +26,7 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   architecture.
 - Added MIT license, security policy, contributing guide, and code of conduct.
 - Removed non-gateway helper and legacy workflow surfaces from this repository.
-  The tool catalog now contains only generic IronClaw HTTP gateway tools plus
+  The tool catalog now contains only generic Helixon HTTP gateway tools plus
   the optional Prometheus metrics query tool.
 - Added `--help` and `--version` entrypoint coverage.
 - Updated README install, Docker, troubleshooting, and release sections for
@@ -37,7 +37,7 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - **Generic-by-default tool surface.** The bridge defaults to the generic
-  IronClaw HTTP-gateway tools plus `ironclaw_get_metrics` when
+  Helixon HTTP-gateway tools plus `helixon_get_metrics` when
   `PROMETHEUS_URL` is set.
 - Deployment-specific helper surfaces were no longer enabled by default.
 - Tool descriptions were rewritten in capability-based language.
@@ -51,7 +51,7 @@ Deployment-specific workflows should move to a separate MCP server.
 
 ### Rationale
 
-`ironclaw-mcp` is the canonical **generic** IronClaw HTTP bridge. Deployment-
+`helixon-mcp` is the canonical **generic** Helixon HTTP bridge. Deployment-
 specific orchestration (fleet operations, persona spawn, Workspace) is
 better served by a dedicated sibling MCP that can evolve its tool catalog
 independently. This release flips the default surface so a fresh install
@@ -61,11 +61,11 @@ matches that intent without breaking existing operators.
 
 ### Removed (BREAKING)
 
-- All `ironclaw_research_*` MCP tools. These wrapped an external
-  domain-specific research CLI and are not part of the IronClaw HTTP bridge
+- All `helixon_research_*` MCP tools. These wrapped an external
+  domain-specific research CLI and are not part of the Helixon HTTP bridge
   surface.
-- All `ironclaw_ui_*` MCP tools (`navigate`, `discover`, `heal`, `verify`).
-- All `ironclaw_evolver_*` MCP tools (`status`, `propose`, `validate`,
+- All `helixon_ui_*` MCP tools (`navigate`, `discover`, `heal`, `verify`).
+- All `helixon_evolver_*` MCP tools (`status`, `propose`, `validate`,
   `promote`).
 - Internal source files: `internal/tools/research.go`,
   `internal/tools/research_test.go`, `internal/tools/uiauto.go`,
@@ -75,7 +75,7 @@ matches that intent without breaking existing operators.
 ### Migration
 
 Consumers that relied on the removed surfaces should call their preferred
-research, browser-automation, or evolution tooling directly. `ironclaw-mcp`
+research, browser-automation, or evolution tooling directly. `helixon-mcp`
 no longer wraps those domain-specific workflows.
 
 ### Changed
@@ -93,5 +93,5 @@ no longer wraps those domain-specific workflows.
 ### Added
 
 - Optional local review and ops helper surfaces. Removed in v0.5.1 because
-  they are not generic IronClaw HTTP gateway operations.
-- Prometheus metrics endpoint and `ironclaw_get_metrics` tool.
+  they are not generic Helixon HTTP gateway operations.
+- Prometheus metrics endpoint and `helixon_get_metrics` tool.

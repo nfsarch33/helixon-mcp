@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
+	"github.com/nfsarch33/ironclaw-mcp/internal/helixon"
 )
 
 // MockIronclawClient is a testify mock for IronclawClient.
@@ -13,24 +13,24 @@ type MockIronclawClient struct {
 	mock.Mock
 }
 
-func (m *MockIronclawClient) Health(ctx context.Context) (*ironclaw.HealthResponse, error) {
+func (m *MockIronclawClient) Health(ctx context.Context) (*helixon.HealthResponse, error) {
 	args := m.Called(ctx)
-	return args.Get(0).(*ironclaw.HealthResponse), args.Error(1)
+	return args.Get(0).(*helixon.HealthResponse), args.Error(1)
 }
 
-func (m *MockIronclawClient) Chat(ctx context.Context, req ironclaw.ChatRequest) (*ironclaw.ChatResponse, error) {
+func (m *MockIronclawClient) Chat(ctx context.Context, req helixon.ChatRequest) (*helixon.ChatResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*ironclaw.ChatResponse), args.Error(1)
+	return args.Get(0).(*helixon.ChatResponse), args.Error(1)
 }
 
-func (m *MockIronclawClient) ListJobs(ctx context.Context) (*ironclaw.JobsResponse, error) {
+func (m *MockIronclawClient) ListJobs(ctx context.Context) (*helixon.JobsResponse, error) {
 	args := m.Called(ctx)
-	return args.Get(0).(*ironclaw.JobsResponse), args.Error(1)
+	return args.Get(0).(*helixon.JobsResponse), args.Error(1)
 }
 
-func (m *MockIronclawClient) GetJob(ctx context.Context, jobID string) (*ironclaw.Job, error) {
+func (m *MockIronclawClient) GetJob(ctx context.Context, jobID string) (*helixon.Job, error) {
 	args := m.Called(ctx, jobID)
-	return args.Get(0).(*ironclaw.Job), args.Error(1)
+	return args.Get(0).(*helixon.Job), args.Error(1)
 }
 
 func (m *MockIronclawClient) CancelJob(ctx context.Context, jobID string) error {
@@ -38,29 +38,29 @@ func (m *MockIronclawClient) CancelJob(ctx context.Context, jobID string) error 
 	return args.Error(0)
 }
 
-func (m *MockIronclawClient) SearchMemory(ctx context.Context, req ironclaw.MemorySearchRequest) (*ironclaw.MemorySearchResponse, error) {
+func (m *MockIronclawClient) SearchMemory(ctx context.Context, req helixon.MemorySearchRequest) (*helixon.MemorySearchResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*ironclaw.MemorySearchResponse), args.Error(1)
+	return args.Get(0).(*helixon.MemorySearchResponse), args.Error(1)
 }
 
-func (m *MockIronclawClient) WriteMemory(ctx context.Context, req ironclaw.MemoryWriteRequest) (*ironclaw.MemoryWriteResponse, error) {
+func (m *MockIronclawClient) WriteMemory(ctx context.Context, req helixon.MemoryWriteRequest) (*helixon.MemoryWriteResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*ironclaw.MemoryWriteResponse), args.Error(1)
+	return args.Get(0).(*helixon.MemoryWriteResponse), args.Error(1)
 }
 
-func (m *MockIronclawClient) ReadMemory(ctx context.Context, req ironclaw.MemoryReadRequest) (*ironclaw.MemoryReadResponse, error) {
+func (m *MockIronclawClient) ReadMemory(ctx context.Context, req helixon.MemoryReadRequest) (*helixon.MemoryReadResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*ironclaw.MemoryReadResponse), args.Error(1)
+	return args.Get(0).(*helixon.MemoryReadResponse), args.Error(1)
 }
 
-func (m *MockIronclawClient) TreeMemory(ctx context.Context, req ironclaw.MemoryTreeRequest) (*ironclaw.MemoryTreeResponse, error) {
+func (m *MockIronclawClient) TreeMemory(ctx context.Context, req helixon.MemoryTreeRequest) (*helixon.MemoryTreeResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*ironclaw.MemoryTreeResponse), args.Error(1)
+	return args.Get(0).(*helixon.MemoryTreeResponse), args.Error(1)
 }
 
-func (m *MockIronclawClient) ListRoutines(ctx context.Context) (*ironclaw.RoutinesResponse, error) {
+func (m *MockIronclawClient) ListRoutines(ctx context.Context) (*helixon.RoutinesResponse, error) {
 	args := m.Called(ctx)
-	return args.Get(0).(*ironclaw.RoutinesResponse), args.Error(1)
+	return args.Get(0).(*helixon.RoutinesResponse), args.Error(1)
 }
 
 func (m *MockIronclawClient) DeleteRoutine(ctx context.Context, routineID string) error {
@@ -68,29 +68,29 @@ func (m *MockIronclawClient) DeleteRoutine(ctx context.Context, routineID string
 	return args.Error(0)
 }
 
-func (m *MockIronclawClient) ListTools(ctx context.Context) (*ironclaw.ToolsResponse, error) {
+func (m *MockIronclawClient) ListTools(ctx context.Context) (*helixon.ToolsResponse, error) {
 	args := m.Called(ctx)
-	return args.Get(0).(*ironclaw.ToolsResponse), args.Error(1)
+	return args.Get(0).(*helixon.ToolsResponse), args.Error(1)
 }
 
-func (m *MockIronclawClient) StackStatus(ctx context.Context, routerURL string) (*ironclaw.StackStatusResponse, error) {
+func (m *MockIronclawClient) StackStatus(ctx context.Context, routerURL string) (*helixon.StackStatusResponse, error) {
 	args := m.Called(ctx, routerURL)
-	return args.Get(0).(*ironclaw.StackStatusResponse), args.Error(1)
+	return args.Get(0).(*helixon.StackStatusResponse), args.Error(1)
 }
 
-func (m *MockIronclawClient) SpawnAgent(ctx context.Context, req ironclaw.SpawnAgentRequest) (*ironclaw.SpawnAgentResponse, error) {
+func (m *MockIronclawClient) SpawnAgent(ctx context.Context, req helixon.SpawnAgentRequest) (*helixon.SpawnAgentResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*ironclaw.SpawnAgentResponse), args.Error(1)
+	return args.Get(0).(*helixon.SpawnAgentResponse), args.Error(1)
 }
 
-func (m *MockIronclawClient) SendTask(ctx context.Context, req ironclaw.SendTaskRequest) (*ironclaw.SendTaskResponse, error) {
+func (m *MockIronclawClient) SendTask(ctx context.Context, req helixon.SendTaskRequest) (*helixon.SendTaskResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*ironclaw.SendTaskResponse), args.Error(1)
+	return args.Get(0).(*helixon.SendTaskResponse), args.Error(1)
 }
 
-func (m *MockIronclawClient) AgentStatus(ctx context.Context) (*ironclaw.AgentStatusResponse, error) {
+func (m *MockIronclawClient) AgentStatus(ctx context.Context) (*helixon.AgentStatusResponse, error) {
 	args := m.Called(ctx)
-	return args.Get(0).(*ironclaw.AgentStatusResponse), args.Error(1)
+	return args.Get(0).(*helixon.AgentStatusResponse), args.Error(1)
 }
 
 // MockPrometheusQuerier is a testify mock for PrometheusQuerier.

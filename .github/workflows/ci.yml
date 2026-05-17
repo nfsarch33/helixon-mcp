@@ -89,7 +89,7 @@ jobs:
         run: make build
 
       - name: Build Docker image
-        run: docker build -t ironclaw-mcp:ci .
+        run: docker build -t helixon-mcp:ci .
 
   security:
     name: Security Scan

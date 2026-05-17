@@ -6,28 +6,28 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
-	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
+	"github.com/nfsarch33/ironclaw-mcp/internal/helixon"
 )
 
 // IronclawClient defines the interface the tool handlers need.
 // This allows easy mocking in tests.
 type IronclawClient interface {
-	Health(ctx context.Context) (*ironclaw.HealthResponse, error)
-	Chat(ctx context.Context, req ironclaw.ChatRequest) (*ironclaw.ChatResponse, error)
-	ListJobs(ctx context.Context) (*ironclaw.JobsResponse, error)
-	GetJob(ctx context.Context, jobID string) (*ironclaw.Job, error)
+	Health(ctx context.Context) (*helixon.HealthResponse, error)
+	Chat(ctx context.Context, req helixon.ChatRequest) (*helixon.ChatResponse, error)
+	ListJobs(ctx context.Context) (*helixon.JobsResponse, error)
+	GetJob(ctx context.Context, jobID string) (*helixon.Job, error)
 	CancelJob(ctx context.Context, jobID string) error
-	SearchMemory(ctx context.Context, req ironclaw.MemorySearchRequest) (*ironclaw.MemorySearchResponse, error)
-	WriteMemory(ctx context.Context, req ironclaw.MemoryWriteRequest) (*ironclaw.MemoryWriteResponse, error)
-	ReadMemory(ctx context.Context, req ironclaw.MemoryReadRequest) (*ironclaw.MemoryReadResponse, error)
-	TreeMemory(ctx context.Context, req ironclaw.MemoryTreeRequest) (*ironclaw.MemoryTreeResponse, error)
-	ListRoutines(ctx context.Context) (*ironclaw.RoutinesResponse, error)
+	SearchMemory(ctx context.Context, req helixon.MemorySearchRequest) (*helixon.MemorySearchResponse, error)
+	WriteMemory(ctx context.Context, req helixon.MemoryWriteRequest) (*helixon.MemoryWriteResponse, error)
+	ReadMemory(ctx context.Context, req helixon.MemoryReadRequest) (*helixon.MemoryReadResponse, error)
+	TreeMemory(ctx context.Context, req helixon.MemoryTreeRequest) (*helixon.MemoryTreeResponse, error)
+	ListRoutines(ctx context.Context) (*helixon.RoutinesResponse, error)
 	DeleteRoutine(ctx context.Context, routineID string) error
-	ListTools(ctx context.Context) (*ironclaw.ToolsResponse, error)
-	StackStatus(ctx context.Context, routerURL string) (*ironclaw.StackStatusResponse, error)
-	SpawnAgent(ctx context.Context, req ironclaw.SpawnAgentRequest) (*ironclaw.SpawnAgentResponse, error)
-	SendTask(ctx context.Context, req ironclaw.SendTaskRequest) (*ironclaw.SendTaskResponse, error)
-	AgentStatus(ctx context.Context) (*ironclaw.AgentStatusResponse, error)
+	ListTools(ctx context.Context) (*helixon.ToolsResponse, error)
+	StackStatus(ctx context.Context, routerURL string) (*helixon.StackStatusResponse, error)
+	SpawnAgent(ctx context.Context, req helixon.SpawnAgentRequest) (*helixon.SpawnAgentResponse, error)
+	SendTask(ctx context.Context, req helixon.SendTaskRequest) (*helixon.SendTaskResponse, error)
+	AgentStatus(ctx context.Context) (*helixon.AgentStatusResponse, error)
 }
 
 // PrometheusQuerier queries Prometheus for metrics.

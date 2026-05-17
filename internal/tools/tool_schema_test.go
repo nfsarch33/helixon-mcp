@@ -15,24 +15,24 @@ func TestDefaultToolSchemas(t *testing.T) {
 		name string
 		tool mcp.Tool
 	}{
-		{"ironclaw_health", NewHealthHandler(client).Tool()},
-		{"ironclaw_chat", NewChatHandler(client).Tool()},
-		{"ironclaw_list_jobs", NewJobsHandler(client).ListJobsTool()},
-		{"ironclaw_get_job", NewJobsHandler(client).GetJobTool()},
-		{"ironclaw_cancel_job", NewJobsHandler(client).CancelJobTool()},
-		{"ironclaw_search_memory", NewMemoryHandler(client).Tool()},
+		{"helixon_health", NewHealthHandler(client).Tool()},
+		{"helixon_chat", NewChatHandler(client).Tool()},
+		{"helixon_list_jobs", NewJobsHandler(client).ListJobsTool()},
+		{"helixon_get_job", NewJobsHandler(client).GetJobTool()},
+		{"helixon_cancel_job", NewJobsHandler(client).CancelJobTool()},
+		{"helixon_search_memory", NewMemoryHandler(client).Tool()},
 		{"memory_search", NewWorkspaceMemoryHandler(client).SearchTool()},
 		{"memory_write", NewWorkspaceMemoryHandler(client).WriteTool()},
 		{"memory_read", NewWorkspaceMemoryHandler(client).ReadTool()},
 		{"memory_tree", NewWorkspaceMemoryHandler(client).TreeTool()},
-		{"ironclaw_list_routines", NewRoutinesHandler(client).ListRoutinesTool()},
-		{"ironclaw_delete_routine", NewRoutinesHandler(client).DeleteRoutineTool()},
-		{"ironclaw_list_tools", NewToolsListHandler(client).Tool()},
-		{"ironclaw_stack_status", NewStackStatusHandler(client).Tool()},
-		{"ironclaw_spawn_agent", NewSpawnAgentHandler(client).Tool()},
-		{"ironclaw_send_task", NewSendTaskHandler(client).Tool()},
-		{"ironclaw_agent_status", NewAgentStatusHandler(client).Tool()},
-		{"ironclaw_get_metrics", NewGetMetricsHandler(prom).Tool()},
+		{"helixon_list_routines", NewRoutinesHandler(client).ListRoutinesTool()},
+		{"helixon_delete_routine", NewRoutinesHandler(client).DeleteRoutineTool()},
+		{"helixon_list_tools", NewToolsListHandler(client).Tool()},
+		{"helixon_stack_status", NewStackStatusHandler(client).Tool()},
+		{"helixon_spawn_agent", NewSpawnAgentHandler(client).Tool()},
+		{"helixon_send_task", NewSendTaskHandler(client).Tool()},
+		{"helixon_agent_status", NewAgentStatusHandler(client).Tool()},
+		{"helixon_get_metrics", NewGetMetricsHandler(prom).Tool()},
 	}
 
 	for _, tt := range tests {

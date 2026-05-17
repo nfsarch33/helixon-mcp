@@ -18,14 +18,14 @@ const (
 
 // Config holds all configuration for the MCP server.
 type Config struct {
-	// IronclawBaseURL is the base URL of the running IronClaw instance.
+	// IronclawBaseURL is the base URL of the running Helixon instance.
 	// Default: http://localhost:3000
 	IronclawBaseURL string
 
-	// APIKey is the optional bearer token for IronClaw authentication.
+	// APIKey is the optional bearer token for Helixon authentication.
 	APIKey string
 
-	// Timeout is the HTTP client timeout for IronClaw API calls.
+	// Timeout is the HTTP client timeout for Helixon API calls.
 	Timeout time.Duration
 
 	// Transport is the MCP transport: "stdio" or "sse".
@@ -37,11 +37,11 @@ type Config struct {
 	// LogLevel controls verbosity: debug, info, warn, error.
 	LogLevel string
 
-	// AllowNonLocalhost permits IRONCLAW_BASE_URL to point to non-loopback hosts.
+	// AllowNonLocalhost permits HELIXON_BASE_URL to point to non-loopback hosts.
 	AllowNonLocalhost bool
 
 	// PrometheusURL is the optional base URL for Prometheus metric queries.
-	// If empty, the ironclaw_get_metrics tool is not registered.
+	// If empty, the helixon_get_metrics tool is not registered.
 	PrometheusURL string
 
 	// PrometheusMetricsPort is the optional port to expose /metrics.
@@ -51,20 +51,20 @@ type Config struct {
 // Load reads configuration from environment variables with sensible defaults.
 func Load() (*Config, error) {
 	cfg := &Config{
-		IronclawBaseURL:       envOrDefault("IRONCLAW_BASE_URL", "http://localhost:3000"),
-		APIKey:                os.Getenv("IRONCLAW_API_KEY"),
+		IronclawBaseURL:       envOrDefault("HELIXON_BASE_URL", "http://localhost:3000"),
+		APIKey:                os.Getenv("HELIXON_API_KEY"),
 		Transport:             envOrDefault("MCP_TRANSPORT", "stdio"),
 		SSEAddr:               envOrDefault("MCP_SSE_ADDR", ":8080"),
 		LogLevel:              envOrDefault("LOG_LEVEL", "info"),
-		AllowNonLocalhost:     envOrDefault("IRONCLAW_ALLOW_NON_LOCALHOST", "") == "true",
+		AllowNonLocalhost:     envOrDefault("HELIXON_ALLOW_NON_LOCALHOST", "") == "true",
 		PrometheusURL:         os.Getenv("PROMETHEUS_URL"),
 		PrometheusMetricsPort: os.Getenv("PROMETHEUS_METRICS_PORT"),
 	}
 
-	timeoutSec := envOrDefault("IRONCLAW_TIMEOUT_SECONDS", "30")
+	timeoutSec := envOrDefault("HELIXON_TIMEOUT_SECONDS", "30")
 	secs, err := strconv.Atoi(timeoutSec)
 	if err != nil {
-		return nil, fmt.Errorf("invalid IRONCLAW_TIMEOUT_SECONDS %q: %w", timeoutSec, err)
+		return nil, fmt.Errorf("invalid HELIXON_TIMEOUT_SECONDS %q: %w", timeoutSec, err)
 	}
 	cfg.Timeout = time.Duration(secs) * time.Second
 
@@ -76,7 +76,7 @@ func Load() (*Config, error) {
 
 func (c *Config) validate() error {
 	if c.IronclawBaseURL == "" {
-		return fmt.Errorf("IRONCLAW_BASE_URL must not be empty")
+		return fmt.Errorf("HELIXON_BASE_URL must not be empty")
 	}
 	if err := validateBaseURL(c.IronclawBaseURL, c.AllowNonLocalhost); err != nil {
 		return err
@@ -85,10 +85,10 @@ func (c *Config) validate() error {
 		return fmt.Errorf("MCP_TRANSPORT must be \"stdio\" or \"sse\", got %q", c.Transport)
 	}
 	if c.Timeout < minTimeoutSec*time.Second {
-		return fmt.Errorf("IRONCLAW_TIMEOUT_SECONDS must be at least %d", minTimeoutSec)
+		return fmt.Errorf("HELIXON_TIMEOUT_SECONDS must be at least %d", minTimeoutSec)
 	}
 	if c.Timeout > maxTimeoutSec*time.Second {
-		return fmt.Errorf("IRONCLAW_TIMEOUT_SECONDS must be at most %d", maxTimeoutSec)
+		return fmt.Errorf("HELIXON_TIMEOUT_SECONDS must be at most %d", maxTimeoutSec)
 	}
 	switch c.LogLevel {
 	case "debug", "info", "warn", "error":
@@ -103,16 +103,16 @@ func (c *Config) validate() error {
 func validateBaseURL(raw string, allowNonLocalhost bool) error {
 	u, err := url.Parse(raw)
 	if err != nil {
-		return fmt.Errorf("IRONCLAW_BASE_URL malformed: %w", err)
+		return fmt.Errorf("HELIXON_BASE_URL malformed: %w", err)
 	}
 	switch u.Scheme {
 	case "http", "https":
 		// allowed
 	default:
-		return fmt.Errorf("IRONCLAW_BASE_URL must use http or https scheme, got %q", u.Scheme)
+		return fmt.Errorf("HELIXON_BASE_URL must use http or https scheme, got %q", u.Scheme)
 	}
 	if u.Host == "" {
-		return fmt.Errorf("IRONCLAW_BASE_URL must have a host")
+		return fmt.Errorf("HELIXON_BASE_URL must have a host")
 	}
 	host, _, err := net.SplitHostPort(u.Host)
 	if err != nil {
@@ -125,14 +125,14 @@ func validateBaseURL(raw string, allowNonLocalhost bool) error {
 	ip := net.ParseIP(strings.Trim(host, "[]"))
 	if ip != nil {
 		if !ip.IsLoopback() {
-			return fmt.Errorf("IRONCLAW_BASE_URL host %q is not loopback; set IRONCLAW_ALLOW_NON_LOCALHOST=true to allow", host)
+			return fmt.Errorf("HELIXON_BASE_URL host %q is not loopback; set HELIXON_ALLOW_NON_LOCALHOST=true to allow", host)
 		}
 		return nil
 	}
 	// Hostname: allow localhost variants only.
 	lower := strings.ToLower(host)
 	if lower != "localhost" && lower != "127.0.0.1" && lower != "::1" {
-		return fmt.Errorf("IRONCLAW_BASE_URL host %q is not localhost; set IRONCLAW_ALLOW_NON_LOCALHOST=true to allow", host)
+		return fmt.Errorf("HELIXON_BASE_URL host %q is not localhost; set HELIXON_ALLOW_NON_LOCALHOST=true to allow", host)
 	}
 	return nil
 }

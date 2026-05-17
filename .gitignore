@@ -1,4 +1,5 @@
 bin/
+helixon-mcp
 ironclaw-mcp
 
 # Allow Dart entry-point sources under flutter/mc-client/bin/ (the

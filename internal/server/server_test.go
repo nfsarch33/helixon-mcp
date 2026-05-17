@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
+	"github.com/nfsarch33/ironclaw-mcp/internal/helixon"
 )
 
 func discardLogger() *slog.Logger {
@@ -19,67 +19,67 @@ func discardLogger() *slog.Logger {
 
 type mockClient struct{ mock.Mock }
 
-func (m *mockClient) Health(ctx context.Context) (*ironclaw.HealthResponse, error) {
+func (m *mockClient) Health(ctx context.Context) (*helixon.HealthResponse, error) {
 	args := m.Called(ctx)
-	return args.Get(0).(*ironclaw.HealthResponse), args.Error(1)
+	return args.Get(0).(*helixon.HealthResponse), args.Error(1)
 }
-func (m *mockClient) Chat(ctx context.Context, req ironclaw.ChatRequest) (*ironclaw.ChatResponse, error) {
+func (m *mockClient) Chat(ctx context.Context, req helixon.ChatRequest) (*helixon.ChatResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*ironclaw.ChatResponse), args.Error(1)
+	return args.Get(0).(*helixon.ChatResponse), args.Error(1)
 }
-func (m *mockClient) ListJobs(ctx context.Context) (*ironclaw.JobsResponse, error) {
+func (m *mockClient) ListJobs(ctx context.Context) (*helixon.JobsResponse, error) {
 	args := m.Called(ctx)
-	return args.Get(0).(*ironclaw.JobsResponse), args.Error(1)
+	return args.Get(0).(*helixon.JobsResponse), args.Error(1)
 }
-func (m *mockClient) GetJob(ctx context.Context, id string) (*ironclaw.Job, error) {
+func (m *mockClient) GetJob(ctx context.Context, id string) (*helixon.Job, error) {
 	args := m.Called(ctx, id)
-	return args.Get(0).(*ironclaw.Job), args.Error(1)
+	return args.Get(0).(*helixon.Job), args.Error(1)
 }
 func (m *mockClient) CancelJob(ctx context.Context, id string) error {
 	return m.Called(ctx, id).Error(0)
 }
-func (m *mockClient) SearchMemory(ctx context.Context, req ironclaw.MemorySearchRequest) (*ironclaw.MemorySearchResponse, error) {
+func (m *mockClient) SearchMemory(ctx context.Context, req helixon.MemorySearchRequest) (*helixon.MemorySearchResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*ironclaw.MemorySearchResponse), args.Error(1)
+	return args.Get(0).(*helixon.MemorySearchResponse), args.Error(1)
 }
-func (m *mockClient) WriteMemory(ctx context.Context, req ironclaw.MemoryWriteRequest) (*ironclaw.MemoryWriteResponse, error) {
+func (m *mockClient) WriteMemory(ctx context.Context, req helixon.MemoryWriteRequest) (*helixon.MemoryWriteResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*ironclaw.MemoryWriteResponse), args.Error(1)
+	return args.Get(0).(*helixon.MemoryWriteResponse), args.Error(1)
 }
-func (m *mockClient) ReadMemory(ctx context.Context, req ironclaw.MemoryReadRequest) (*ironclaw.MemoryReadResponse, error) {
+func (m *mockClient) ReadMemory(ctx context.Context, req helixon.MemoryReadRequest) (*helixon.MemoryReadResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*ironclaw.MemoryReadResponse), args.Error(1)
+	return args.Get(0).(*helixon.MemoryReadResponse), args.Error(1)
 }
-func (m *mockClient) TreeMemory(ctx context.Context, req ironclaw.MemoryTreeRequest) (*ironclaw.MemoryTreeResponse, error) {
+func (m *mockClient) TreeMemory(ctx context.Context, req helixon.MemoryTreeRequest) (*helixon.MemoryTreeResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*ironclaw.MemoryTreeResponse), args.Error(1)
+	return args.Get(0).(*helixon.MemoryTreeResponse), args.Error(1)
 }
-func (m *mockClient) ListRoutines(ctx context.Context) (*ironclaw.RoutinesResponse, error) {
+func (m *mockClient) ListRoutines(ctx context.Context) (*helixon.RoutinesResponse, error) {
 	args := m.Called(ctx)
-	return args.Get(0).(*ironclaw.RoutinesResponse), args.Error(1)
+	return args.Get(0).(*helixon.RoutinesResponse), args.Error(1)
 }
 func (m *mockClient) DeleteRoutine(ctx context.Context, id string) error {
 	return m.Called(ctx, id).Error(0)
 }
-func (m *mockClient) ListTools(ctx context.Context) (*ironclaw.ToolsResponse, error) {
+func (m *mockClient) ListTools(ctx context.Context) (*helixon.ToolsResponse, error) {
 	args := m.Called(ctx)
-	return args.Get(0).(*ironclaw.ToolsResponse), args.Error(1)
+	return args.Get(0).(*helixon.ToolsResponse), args.Error(1)
 }
-func (m *mockClient) StackStatus(ctx context.Context, routerURL string) (*ironclaw.StackStatusResponse, error) {
+func (m *mockClient) StackStatus(ctx context.Context, routerURL string) (*helixon.StackStatusResponse, error) {
 	args := m.Called(ctx, routerURL)
-	return args.Get(0).(*ironclaw.StackStatusResponse), args.Error(1)
+	return args.Get(0).(*helixon.StackStatusResponse), args.Error(1)
 }
-func (m *mockClient) SpawnAgent(ctx context.Context, req ironclaw.SpawnAgentRequest) (*ironclaw.SpawnAgentResponse, error) {
+func (m *mockClient) SpawnAgent(ctx context.Context, req helixon.SpawnAgentRequest) (*helixon.SpawnAgentResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*ironclaw.SpawnAgentResponse), args.Error(1)
+	return args.Get(0).(*helixon.SpawnAgentResponse), args.Error(1)
 }
-func (m *mockClient) SendTask(ctx context.Context, req ironclaw.SendTaskRequest) (*ironclaw.SendTaskResponse, error) {
+func (m *mockClient) SendTask(ctx context.Context, req helixon.SendTaskRequest) (*helixon.SendTaskResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*ironclaw.SendTaskResponse), args.Error(1)
+	return args.Get(0).(*helixon.SendTaskResponse), args.Error(1)
 }
-func (m *mockClient) AgentStatus(ctx context.Context) (*ironclaw.AgentStatusResponse, error) {
+func (m *mockClient) AgentStatus(ctx context.Context) (*helixon.AgentStatusResponse, error) {
 	args := m.Called(ctx)
-	return args.Get(0).(*ironclaw.AgentStatusResponse), args.Error(1)
+	return args.Get(0).(*helixon.AgentStatusResponse), args.Error(1)
 }
 
 type mockProm struct{ mock.Mock }
@@ -92,14 +92,14 @@ func (m *mockProm) Query(ctx context.Context, query string) (string, error) {
 func TestNew_RegistersBaseTools(t *testing.T) {
 	srv := New(new(mockClient), nil, discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
-	// Generic IronClaw HTTP-bridge baseline.
+	// Generic Helixon HTTP-bridge baseline.
 	assert.Equal(t, 17, count)
 }
 
 func TestNew_WithPrometheus_RegistersMetricsTool(t *testing.T) {
 	srv := New(new(mockClient), new(mockProm), discardLogger(), "0.1.0")
 	count := srv.RegisteredToolCount()
-	// Generic baseline + ironclaw_get_metrics when PROMETHEUS_URL is configured.
+	// Generic baseline + helixon_get_metrics when PROMETHEUS_URL is configured.
 	assert.Equal(t, 18, count)
 }
 

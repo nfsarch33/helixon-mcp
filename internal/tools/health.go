@@ -7,7 +7,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-// HealthHandler handles the ironclaw_health MCP tool.
+// HealthHandler handles the helixon_health MCP tool.
 type HealthHandler struct {
 	client IronclawClient
 }
@@ -17,11 +17,11 @@ func NewHealthHandler(client IronclawClient) *HealthHandler {
 	return &HealthHandler{client: client}
 }
 
-// Tool returns the ironclaw_health MCP tool definition.
+// Tool returns the helixon_health MCP tool definition.
 func (h *HealthHandler) Tool() mcp.Tool {
 	return mcp.NewTool(
-		"ironclaw_health",
-		mcp.WithDescription("Check the health and availability of the IronClaw instance. Returns status and version."),
+		"helixon_health",
+		mcp.WithDescription("Check the health and availability of the Helixon instance. Returns status and version."),
 	)
 }
 

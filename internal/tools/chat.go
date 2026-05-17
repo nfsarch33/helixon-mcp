@@ -1,4 +1,4 @@
-// Package tools defines all MCP tool handlers for IronClaw.
+// Package tools defines all MCP tool handlers for Helixon.
 package tools
 
 import (
@@ -8,10 +8,10 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
-	"github.com/nfsarch33/ironclaw-mcp/internal/ironclaw"
+	"github.com/nfsarch33/ironclaw-mcp/internal/helixon"
 )
 
-// ChatHandler handles the ironclaw_chat MCP tool.
+// ChatHandler handles the helixon_chat MCP tool.
 type ChatHandler struct {
 	client IronclawClient
 }
@@ -24,11 +24,11 @@ func NewChatHandler(client IronclawClient) *ChatHandler {
 // Tool returns the MCP tool definition.
 func (h *ChatHandler) Tool() mcp.Tool {
 	return mcp.NewTool(
-		"ironclaw_chat",
-		mcp.WithDescription("Send a message to your IronClaw AI assistant and receive a response. Use this for general queries, commands, and interactions with IronClaw."),
+		"helixon_chat",
+		mcp.WithDescription("Send a message to your Helixon AI assistant and receive a response. Use this for general queries, commands, and interactions with Helixon."),
 		mcp.WithString("message",
 			mcp.Required(),
-			mcp.Description("The message to send to IronClaw."),
+			mcp.Description("The message to send to Helixon."),
 		),
 		mcp.WithString("session_id",
 			mcp.Description("Optional session ID to maintain conversation context across calls."),
@@ -44,12 +44,12 @@ func (h *ChatHandler) Handle(ctx context.Context, req mcp.CallToolRequest) (*mcp
 	}
 	sessionID := optionalString(req, "session_id")
 
-	resp, err := h.client.Chat(ctx, ironclaw.ChatRequest{
+	resp, err := h.client.Chat(ctx, helixon.ChatRequest{
 		Message:   message,
 		SessionID: sessionID,
 	})
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("IronClaw chat error: %v", err)), nil
+		return mcp.NewToolResultError(fmt.Sprintf("Helixon chat error: %v", err)), nil
 	}
 
 	result := map[string]any{

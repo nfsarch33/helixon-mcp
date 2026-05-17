@@ -7,7 +7,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-// ToolsListHandler handles the ironclaw_list_tools MCP tool.
+// ToolsListHandler handles the helixon_list_tools MCP tool.
 type ToolsListHandler struct {
 	client IronclawClient
 }
@@ -17,11 +17,11 @@ func NewToolsListHandler(client IronclawClient) *ToolsListHandler {
 	return &ToolsListHandler{client: client}
 }
 
-// Tool returns the ironclaw_list_tools MCP tool definition.
+// Tool returns the helixon_list_tools MCP tool definition.
 func (h *ToolsListHandler) Tool() mcp.Tool {
 	return mcp.NewTool(
-		"ironclaw_list_tools",
-		mcp.WithDescription("List all tools registered in IronClaw, including built-in, WASM, and MCP-connected tools."),
+		"helixon_list_tools",
+		mcp.WithDescription("List all tools registered in Helixon, including built-in, WASM, and MCP-connected tools."),
 	)
 }
 
