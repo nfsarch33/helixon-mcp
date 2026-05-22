@@ -39,7 +39,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/nfsarch33/ironclaw-mcp
+        - github.com/nfsarch33/helixon-mcp
   exclusions:
     generated: lax
     paths:
