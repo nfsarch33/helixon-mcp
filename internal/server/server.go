@@ -11,6 +11,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	mcpserver "github.com/mark3labs/mcp-go/server"
 
+	"github.com/nfsarch33/helixon-mcp/internal/agentrace"
 	"github.com/nfsarch33/helixon-mcp/internal/tools"
 )
 
@@ -22,6 +23,7 @@ type Server struct {
 	version   string
 	mcp       *mcpserver.MCPServer
 	sse       *mcpserver.SSEServer
+	tracer    *agentrace.Recorder
 	toolCount int
 }
 
@@ -37,8 +39,22 @@ func New(client tools.IronclawClient, prom tools.PrometheusQuerier, logger *slog
 		logger:  logger,
 		version: version,
 	}
+	if rec, err := agentrace.New(agentrace.DefaultConfig()); err == nil {
+		s.tracer = rec
+	} else {
+		logger.Debug("agentrace disabled", "error", err)
+	}
 	s.mcp = s.buildMCPServer()
 	return s
+}
+
+// Close releases server-owned resources (currently the agentrace log file).
+// Safe to call on a nil Server.
+func (s *Server) Close() error {
+	if s == nil {
+		return nil
+	}
+	return s.tracer.Close()
 }
 
 func (s *Server) buildMCPServer() *mcpserver.MCPServer {
@@ -49,7 +65,7 @@ func (s *Server) buildMCPServer() *mcpserver.MCPServer {
 	)
 
 	addTool := func(t mcp.Tool, h mcpserver.ToolHandlerFunc) {
-		srv.AddTool(t, h)
+		srv.AddTool(t, s.tracer.Wrap(t.Name, h))
 		s.toolCount++
 	}
 
