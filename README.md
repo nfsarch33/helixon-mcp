@@ -1,8 +1,8 @@
 # helixon-mcp
 
-[![CI](https://github.com/nfsarch33/ironclaw-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/nfsarch33/ironclaw-mcp/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/nfsarch33/ironclaw-mcp)](https://goreportcard.com/report/github.com/nfsarch33/ironclaw-mcp)
-[![Go Reference](https://pkg.go.dev/badge/github.com/nfsarch33/ironclaw-mcp.svg)](https://pkg.go.dev/github.com/nfsarch33/ironclaw-mcp)
+[![CI](https://github.com/nfsarch33/helixon-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/nfsarch33/helixon-mcp/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/nfsarch33/helixon-mcp)](https://goreportcard.com/report/github.com/nfsarch33/helixon-mcp)
+[![Go Reference](https://pkg.go.dev/badge/github.com/nfsarch33/helixon-mcp.svg)](https://pkg.go.dev/github.com/nfsarch33/helixon-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A general-purpose **MCP (Model Context Protocol) server** in Go that bridges
@@ -18,7 +18,7 @@ against any Helixon instance you point it at.
 
 ```bash
 # 1. Install (or build from source — see below)
-go install github.com/nfsarch33/ironclaw-mcp/cmd/helixon-mcp@latest
+go install github.com/nfsarch33/helixon-mcp/cmd/helixon-mcp@latest
 
 # 2. Point at your Helixon gateway
 export HELIXON_BASE_URL=http://localhost:3000
@@ -65,7 +65,7 @@ Or via Docker (no Go toolchain required):
 Reload MCP servers in your client and the `helixon_*` tools will appear.
 
 > Found a bug or want a feature? Please open an issue at
-> <https://github.com/nfsarch33/ironclaw-mcp/issues>.
+> <https://github.com/nfsarch33/helixon-mcp/issues>.
 
 ## Default Tool Surface (13 tools)
 
@@ -124,7 +124,7 @@ including transport-specific notes and Cursor integration tips.
 ## Build from source
 
 ```bash
-git clone https://github.com/nfsarch33/ironclaw-mcp.git
+git clone https://github.com/nfsarch33/helixon-mcp.git
 cd helixon-mcp
 make build
 ./bin/helixon-mcp --version
