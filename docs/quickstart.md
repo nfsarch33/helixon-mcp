@@ -6,13 +6,13 @@ registered with an MCP-compatible assistant.
 ## 1. Install
 
 ```bash
-go install github.com/nfsarch33/ironclaw-mcp/cmd/helixon-mcp@latest
+go install github.com/nfsarch33/helixon-mcp/cmd/helixon-mcp@latest
 ```
 
 Or build from source:
 
 ```bash
-git clone https://github.com/nfsarch33/ironclaw-mcp.git
+git clone https://github.com/nfsarch33/helixon-mcp.git
 cd helixon-mcp
 make build
 ./bin/helixon-mcp --version
