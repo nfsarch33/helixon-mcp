@@ -117,5 +117,5 @@ All paths in the config use `$HOME/...` (resolved at load via
 
 - Repo: `github.com/nfsarch33/runx` (Go, Cobra, MIT).
 - Config: `$HOME/.config/runx/config.yaml` (mode `0600`).
-- SOP: `$HOME/Code/global-kb/sop/no-shell-leak.md`.
+- SOP: See the no-shell-leak SOP in your knowledge base.
 - Logs: `$HOME/logs/runx/` (NDJSON, rotated).
