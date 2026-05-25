@@ -10,20 +10,20 @@
 - Purpose: MCP server bridging Helixon autonomous AI runtime to MCP clients; provides 13 default tools (health, chat, jobs, memory search, routines, agent spawn, metrics) via the documented Helixon HTTP gateway API.
 - Language(s): Go
 - License: MIT
-- Authoritative README: <https://github.com/nfsarch33/ironclaw-mcp#readme>
+- Authoritative README: <https://github.com/nfsarch33/helixon-mcp#readme>
 - Source of truth branch: `main`
 
 ## Quick Start
 
 - Install:
   ```
-  go install github.com/nfsarch33/ironclaw-mcp/cmd/helixon-mcp@latest
+  go install github.com/nfsarch33/helixon-mcp/cmd/helixon-mcp@latest
   export HELIXON_BASE_URL=http://localhost:3000
   helixon-mcp --version
   ```
 - Build from source:
   ```
-  git clone https://github.com/nfsarch33/ironclaw-mcp.git
+  git clone https://github.com/nfsarch33/helixon-mcp.git
   cd helixon-mcp
   make build
   ./bin/helixon-mcp --version
@@ -61,11 +61,11 @@
 
 ## Related Repos
 
-- [Helixon](https://github.com/nearai/helixon) — the autonomous AI runtime this server bridges
+- [IronClaw](https://github.com/nearai/ironclaw) — the autonomous AI runtime this server bridges
 
 ## Operational Notes
 
-- Issue tracker: <https://github.com/nfsarch33/ironclaw-mcp/issues>
+- Issue tracker: <https://github.com/nfsarch33/helixon-mcp/issues>
 - Security policy: `SECURITY.md`
 - How to contribute: `CONTRIBUTING.md`
 
