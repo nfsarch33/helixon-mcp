@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A general-purpose **MCP (Model Context Protocol) server** in Go that bridges
-[Helixon](https://github.com/nearai/helixon) — an open-source autonomous AI
+[Helixon](https://github.com/nearai/ironclaw) — an open-source autonomous AI
 assistant runtime — with any MCP-compatible client (Cursor, Claude Code,
 VS Code Copilot, Continue, Zed, …).
 
@@ -137,7 +137,7 @@ make docker-build
 make docker-run
 ```
 
-Prerequisites: **Go 1.24+** and a running [Helixon](https://github.com/nearai/helixon)
+Prerequisites: **Go 1.24+** and a running [Helixon](https://github.com/nearai/ironclaw)
 instance.
 
 ## Smoke test
@@ -191,7 +191,7 @@ breakdown.
 
 ```
 helixon-mcp/
-├── cmd/helixon-mcp/     # Entry point
+├── cmd/helixon-mcp/      # Entry point
 ├── internal/
 │   ├── config/           # Environment config + validation
 │   ├── helixon/         # Helixon HTTP API client
