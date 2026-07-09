@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
+
 	"github.com/nfsarch33/helixon-mcp/internal/helixon"
 )
 

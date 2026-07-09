@@ -1,6 +1,6 @@
 module github.com/nfsarch33/helixon-mcp
 
-go 1.24.0
+go 1.26.5
 
 require (
 	github.com/mark3labs/mcp-go v0.20.1
