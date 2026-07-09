@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -113,8 +114,13 @@ func (r *Recorder) Record(tool string, duration time.Duration, err error) {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.f.Write(data)
-	r.f.Write([]byte("\n"))
+	if _, err := r.f.Write(data); err != nil {
+		log.Printf("agentrace: write event failed: %v", err)
+		return
+	}
+	if _, err := r.f.Write([]byte("\n")); err != nil {
+		log.Printf("agentrace: write newline failed: %v", err)
+	}
 }
 
 // Wrap returns a tool handler that times the inner handler and records the
