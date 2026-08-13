@@ -99,42 +99,64 @@ func (c *Config) validate() error {
 	return nil
 }
 
-// validateBaseURL checks that the URL is well-formed, uses http(s), and optionally restricts to loopback.
+// validateBaseURL checks that the URL is well-formed, uses http(s), and
+// optionally restricts to loopback. Thin orchestrator on top of the helpers
+// below; the heavy lifting is in checkScheme / extractHost / requireLocalhost.
 func validateBaseURL(raw string, allowNonLocalhost bool) error {
 	u, err := url.Parse(raw)
 	if err != nil {
 		return fmt.Errorf("HELIXON_BASE_URL malformed: %w", err)
 	}
-	switch u.Scheme {
-	case "http", "https":
-		// allowed
-	default:
-		return fmt.Errorf("HELIXON_BASE_URL must use http or https scheme, got %q", u.Scheme)
+	if err := checkScheme(u.Scheme); err != nil {
+		return err
 	}
 	if u.Host == "" {
 		return fmt.Errorf("HELIXON_BASE_URL must have a host")
 	}
-	host, _, err := net.SplitHostPort(u.Host)
-	if err != nil {
-		host = u.Host
-	}
+	host := extractHost(u.Host)
 	if allowNonLocalhost {
 		return nil
 	}
-	// Local-first: only allow loopback addresses by default.
-	ip := net.ParseIP(strings.Trim(host, "[]"))
-	if ip != nil {
+	return requireLocalhost(host)
+}
+
+// checkScheme reports whether the given scheme is http or https.
+func checkScheme(scheme string) error {
+	switch scheme {
+	case "http", "https":
+		return nil
+	default:
+		return fmt.Errorf("HELIXON_BASE_URL must use http or https scheme, got %q", scheme)
+	}
+}
+
+// extractHost returns the hostname portion of a host[:port] string. If the
+// input is a bare hostname (no port) it is returned unchanged.
+func extractHost(hostPort string) string {
+	host, _, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		return hostPort
+	}
+	return host
+}
+
+// requireLocalhost returns nil only if host is a loopback IP or one of the
+// well-known localhost names. Bracketed IPv6 literals are stripped before
+// parsing.
+func requireLocalhost(host string) error {
+	stripped := strings.Trim(host, "[]")
+	if ip := net.ParseIP(stripped); ip != nil {
 		if !ip.IsLoopback() {
 			return fmt.Errorf("HELIXON_BASE_URL host %q is not loopback; set HELIXON_ALLOW_NON_LOCALHOST=true to allow", host)
 		}
 		return nil
 	}
-	// Hostname: allow localhost variants only.
-	lower := strings.ToLower(host)
-	if lower != "localhost" && lower != "127.0.0.1" && lower != "::1" {
+	switch strings.ToLower(stripped) {
+	case "localhost", "127.0.0.1", "::1":
+		return nil
+	default:
 		return fmt.Errorf("HELIXON_BASE_URL host %q is not localhost; set HELIXON_ALLOW_NON_LOCALHOST=true to allow", host)
 	}
-	return nil
 }
 
 func envOrDefault(key, def string) string {
