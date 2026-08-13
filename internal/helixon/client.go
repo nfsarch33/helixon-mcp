@@ -577,19 +577,32 @@ func (c *Client) resolveThreadID(ctx context.Context, sessionID string) (string,
 	if sessionID != "" {
 		return sessionID, nil
 	}
-
-	var threads threadListResponse
-	if err := c.get(ctx, "/api/chat/threads", &threads); err == nil {
-		switch {
-		case threads.AssistantThread != nil && threads.AssistantThread.ID != "":
-			return threads.AssistantThread.ID, nil
-		case threads.ActiveThread != "":
-			return threads.ActiveThread, nil
-		case len(threads.Threads) > 0 && threads.Threads[0].ID != "":
-			return threads.Threads[0].ID, nil
-		}
+	if id := pickExistingThreadID(ctx, c); id != "" {
+		return id, nil
 	}
+	return c.createNewThread(ctx)
+}
 
+// pickExistingThreadID probes the existing thread list and returns the first
+// usable thread ID, or "" if none could be selected.
+func pickExistingThreadID(ctx context.Context, c *Client) string {
+	var threads threadListResponse
+	if err := c.get(ctx, "/api/chat/threads", &threads); err != nil {
+		return ""
+	}
+	if threads.AssistantThread != nil && threads.AssistantThread.ID != "" {
+		return threads.AssistantThread.ID
+	}
+	if threads.ActiveThread != "" {
+		return threads.ActiveThread
+	}
+	if len(threads.Threads) > 0 && threads.Threads[0].ID != "" {
+		return threads.Threads[0].ID
+	}
+	return ""
+}
+
+func (c *Client) createNewThread(ctx context.Context) (string, error) {
 	var thread threadInfo
 	if err := c.post(ctx, "/api/chat/thread/new", nil, &thread); err != nil {
 		return "", fmt.Errorf("creating chat thread: %w", err)
@@ -630,17 +643,11 @@ func (c *Client) waitForChatResponse(ctx context.Context, threadID string, initi
 			return "", fmt.Errorf("loading chat history: %w", err)
 		}
 
-		for i := len(history.Turns) - 1; i >= initialTurnCount && i >= 0; i-- {
-			turn := history.Turns[i]
-			if turn.UserInput != message {
-				continue
+		if resp, terminalErr, found := findMatchingTurnResponse(history.Turns, initialTurnCount, message); found {
+			if terminalErr != "" {
+				return "", fmt.Errorf("backend turn failed: %s", terminalErr)
 			}
-			if turn.Response != nil && *turn.Response != "" {
-				return *turn.Response, nil
-			}
-			if err := terminalTurnError(turn); err != "" {
-				return "", fmt.Errorf("backend turn failed: %s", err)
-			}
+			return resp, nil
 		}
 
 		select {
@@ -649,6 +656,27 @@ func (c *Client) waitForChatResponse(ctx context.Context, threadID string, initi
 		case <-ticker.C:
 		}
 	}
+}
+
+// findMatchingTurnResponse scans the turn list for the most recent turn
+// whose UserInput matches message. Returns the response, a terminal error
+// string, and a found flag. v16716-5 refactor: extracted from
+// waitForChatResponse to reduce CC.
+func findMatchingTurnResponse(turns []historyTurn, initialTurnCount int, message string) (resp, terminalErr string, found bool) {
+	for i := len(turns) - 1; i >= initialTurnCount && i >= 0; i-- {
+		turn := turns[i]
+		if turn.UserInput != message {
+			continue
+		}
+		found = true
+		if turn.Response != nil && *turn.Response != "" {
+			return *turn.Response, "", true
+		}
+		if err := terminalTurnError(turn); err != "" {
+			return "", err, true
+		}
+	}
+	return "", "", false
 }
 
 func terminalTurnError(turn historyTurn) string {
