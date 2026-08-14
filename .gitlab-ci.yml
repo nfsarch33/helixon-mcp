@@ -1,0 +1,78 @@
+stages:
+  - lint
+  - test
+  - build
+
+variables:
+  GO_VERSION: "1.25"
+  GOFLAGS: "-buildvcs=false"
+
+.go_base:
+  image: golang:${GO_VERSION}
+  before_script:
+    - go mod download
+  tags:
+    - podman
+
+vet:
+  extends: .go_base
+  stage: lint
+  script:
+    - go vet ./...
+
+lint:
+  extends: .go_base
+  stage: lint
+  script:
+    - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+    - golangci-lint run --timeout 5m ./...
+  allow_failure: false
+
+test:
+  extends: .go_base
+  stage: test
+  script:
+    - go test -race -count=1 -coverprofile=coverage.out ./...
+    - go tool cover -func=coverage.out | tail -1
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.out
+    paths:
+      - coverage.out
+    expire_in: 7 days
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+
+integration:ginkgo:
+  extends: .go_base
+  stage: test
+  script:
+    - go install github.com/onsi/ginkgo/v2/ginkgo@latest
+    - ginkgo -r --tags=integration --trace --cover --coverprofile=integration.coverprofile
+    - go tool cover -func=integration.coverprofile | tee coverage.txt
+    - go test -race -tags=integration -count=1 ./...
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: integration.coverprofile
+  coverage: '/total:\s+\(statements\)\s+(\d+.\d+)%/'
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+build:
+  extends: .go_base
+  stage: build
+  script:
+    - CGO_ENABLED=0 go build -ldflags="-s -w" ./...
+  artifacts:
+    paths:
+      - ./
+    expire_in: 7 days
+  only:
+    - main
+    - tags
