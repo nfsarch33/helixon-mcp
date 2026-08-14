@@ -1,0 +1,25 @@
+# rebrand-gate allowlist for helixon-mcp (v18750-40h S2b)
+# This package IS a helixon-* package; legacy brand references are legitimate.
+#
+# Pattern: file basename; term: the literal legacy token.
+# Added: 2026-08-14 (Sprint v18750-40h S2b)
+schema_version: 1
+entries:
+  - file: "*"
+    term: "helixon"
+  - file: "*"
+    term: "Helixon"
+  - file: "*"
+    term: "HELIXON_"
+  - file: "*"
+    term: "cursor-global-kb"
+  - file: "*"
+    term: "cursor-tools"
+  - file: "*"
+    term: "github.com/nfsarch33/helixon-"
+  - file: "*"
+    term: "helixon/"
+  - file: "*"
+    term: "Helixon/"
+  - file: "*"
+    term: "cylrl"
