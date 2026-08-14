@@ -18,6 +18,8 @@ entries:
   - file: "*"
     term: "github.com/nfsarch33/helixon-"
   - file: "*"
+    term: "github.com/nfsarch33/helixon-mcp"
+  - file: "*"
     term: "helixon/"
   - file: "*"
     term: "Helixon/"
