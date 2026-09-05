@@ -56,7 +56,7 @@ op item list --vault <vault-name> --format json | \
 val, err := opRead("<vault-name>", "<item-uuid>", "api-key")
 
 // WRONG — display name with spaces and special chars
-val, err := opRead("<vault-name>", "minimax-api-1", "api-key")
+val, err := opRead("<vault-name>", "<item-name>", "api-key")
 ```
 
 ```bash
@@ -64,7 +64,7 @@ val, err := opRead("<vault-name>", "minimax-api-1", "api-key")
 op read "op://<vault-name>/<item-uuid>/api-key"
 
 # WRONG
-op read "op://<vault-name>/minimax-api-1/api-key"
+op read "op://<vault-name>/<item-name>/api-key"
 ```
 
 ## Exceptions
