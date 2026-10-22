@@ -6,13 +6,16 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A general-purpose **MCP (Model Context Protocol) server** in Go that bridges
-[Helixon](https://github.com/nearai/ironclaw) — an open-source autonomous AI
-assistant runtime — with any MCP-compatible client (Cursor, Claude Code,
+the Helixon agent platform
+([github.com/nfsarch33/helixon-platform](https://github.com/nfsarch33/helixon-platform))
+HTTP gateway with any MCP-compatible client (Cursor, Claude Code,
 VS Code Copilot, Continue, Zed, …).
 
-The default tool surface speaks **only the documented Helixon HTTP gateway
-API** and ships no deployment-specific assumptions, so a fresh install works
-against any Helixon instance you point it at.
+The tool surface speaks **only the Helixon HTTP gateway API** (`/api/health`,
+`/api/chat/send`, `/api/jobs`, `/api/memory/*`, `/api/routines`,
+`/api/extensions/tools`, `/api/gateway/status`) and ships no
+deployment-specific assumptions, so a fresh install works against any Helixon
+gateway you point it at.
 
 ## Install in 2 minutes
 
@@ -67,10 +70,10 @@ Reload MCP servers in your client and the `helixon_*` tools will appear.
 > Found a bug or want a feature? Please open an issue at
 > <https://github.com/nfsarch33/helixon-mcp/issues>.
 
-## Default Tool Surface (13 tools)
+## Default Tool Surface (17 tools)
 
-These tools are always registered when the Helixon gateway is reachable.
-They speak only the documented Helixon HTTP API and are deployment-agnostic.
+These tools are always registered at startup (`internal/server/server.go`).
+They speak only the Helixon HTTP API and are deployment-agnostic.
 
 | Tool | Description |
 |---|---|
@@ -87,6 +90,10 @@ They speak only the documented Helixon HTTP API and are deployment-agnostic.
 | `helixon_spawn_agent` | Spawn a new agent job with model and tier selection |
 | `helixon_send_task` | Enqueue a background task/message via the Helixon gateway |
 | `helixon_agent_status` | Agent thread states, active/total job counts, last heartbeat |
+| `memory_search` | Search workspace memory (`/api/memory/search`) |
+| `memory_write` | Write to workspace memory (`/api/memory/write`) |
+| `memory_read` | Read a workspace memory path (`/api/memory/read`) |
+| `memory_tree` | List the workspace memory tree (`/api/memory/tree`) |
 
 ### Optional adjuncts
 
@@ -109,9 +116,11 @@ All configuration is via environment variables.
 | `HELIXON_ALLOW_NON_LOCALHOST` | `false` | Set to `true` to allow non-loopback hosts (e.g. remote Helixon) |
 | `HELIXON_TIMEOUT_SECONDS` | `30` | HTTP timeout in seconds (1–120) |
 | `MCP_TRANSPORT` | `stdio` | `stdio` or `sse` |
-| `MCP_SSE_ADDR` | `:8080` | Bind address when using SSE |
+| `MCP_SSE_ADDR` | `:9090` | Bind address when using SSE (the server falls back to `:9090` when the variable is unset) |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `PROMETHEUS_URL` | _(empty)_ | If set, registers the `helixon_get_metrics` tool |
+| `HELIXON_ROUTER_URL` | `http://127.0.0.1:8080` | LLM router URL queried by `helixon_stack_status` |
+| `AGENTRACE_DISABLED` | _(unset)_ | Set to `1` to disable the per-tool-call NDJSON trace written under `$HOME/logs/` (`internal/agentrace`) |
 
 **Secure local defaults:** By default, `HELIXON_BASE_URL` is restricted to
 loopback addresses (`localhost`, `127.0.0.1`, `[::1]`). Set
@@ -137,8 +146,8 @@ make docker-build
 make docker-run
 ```
 
-Prerequisites: **Go 1.24+** and a running [Helixon](https://github.com/nearai/ironclaw)
-instance.
+Prerequisites: the Go version in `go.mod` (currently 1.26.5) and a running Helixon
+gateway ([helixon-platform](https://github.com/nfsarch33/helixon-platform)).
 
 ## Smoke test
 
@@ -148,7 +157,7 @@ already-running Helixon gateway:
 ```bash
 make smoke                                          # gateway-only proof
 SMOKE_STATEFUL_TOOL=helixon_chat make smoke         # full local chat path
-make smoke SMOKE_ARGS="--all"                        # all 13 default tools
+make smoke SMOKE_ARGS="--all"                        # every default tool
 ./scripts/smoke-test.sh --all --report | jq '.summary'  # JSON for CI
 ```
 
@@ -194,7 +203,8 @@ helixon-mcp/
 ├── cmd/helixon-mcp/      # Entry point
 ├── internal/
 │   ├── config/           # Environment config + validation
-│   ├── helixon/         # Helixon HTTP API client
+│   ├── helixon/          # Helixon HTTP API client
+│   ├── agentrace/        # NDJSON tool-call trace recorder
 │   ├── tools/            # MCP tool handlers (one file per domain)
 │   └── server/           # MCP server wiring
 ├── docs/                 # Quickstart, architecture, configuration
